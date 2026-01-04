@@ -1,0 +1,19 @@
+{
+  "user_id": "75afdd0d-fae0-4b05-9e78-d9087393daad",
+  "selected_sports": [
+    "nfl",
+    "nhl",
+    "nba",
+    "mlb",
+    "cricket"
+  ],
+  "favorites": {
+    "nfl": "New England Patriots",
+    "nhl": "Boston Bruins",
+    "nba": "Boston Celtics",
+    "mlb": "Boston Red Sox",
+    "cricket": "India"
+  },
+  "updated_at": "2026-01-03T14:40:26.610991",
+  "created_at": "2026-01-03T14:40:26.611025"
+}

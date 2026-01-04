@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ sport_info.name }} - Sports Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sport_page.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="sport-page-container">
+        <!-- Top Navbar -->
+        <nav class="top-navbar">
+            <div class="navbar-left">
+                <a href="{{ url_for('dashboard') }}" class="back-btn">
+                    <span>←</span> Back to Dashboard
+                </a>
+            </div>
+            <div class="navbar-right">
+                {% if username and not is_public %}
+                <a href="{{ url_for('preferences') }}" class="user-menu-btn">
+                    <span class="user-icon">👤</span>
+                    <span class="username">{{ username }}</span>
+                </a>
+                {% elif is_public %}
+                <a href="{{ url_for('login') }}" class="login-btn">
+                    <span class="login-icon">🔐</span>
+                    <span>Login</span>
+                </a>
+                {% endif %}
+            </div>
+        </nav>
+        
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <button class="tab-btn active" data-tab="games">Games</button>
+            <button class="tab-btn" data-tab="news">News</button>
+            <button class="tab-btn" data-tab="standings">Standings</button>
+            <button class="tab-btn" data-tab="stats">Stats</button>
+        </div>
+        
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Games Tab -->
+            <div class="tab-panel active" id="games-tab">
+                <!-- Live Games (Bigger Cards) -->
+                {% if games_data.live %}
+                <div class="live-games-section">
+                    <h2 class="section-title">Live Games</h2>
+                    <div class="live-games-grid">
+                        {% for game in games_data.live %}
+                        <div class="live-game-card">
+                            <div class="live-badge">LIVE</div>
+                            <div class="game-header">
+                                <div class="game-teams">
+                                    <div class="team">
+                                        <div class="team-name">{{ game.teams.home.name }}</div>
+                                        <div class="team-score">{{ game.goals.home }}</div>
+                                    </div>
+                                    <div class="vs-divider">vs</div>
+                                    <div class="team">
+                                        <div class="team-name">{{ game.teams.away.name }}</div>
+                                        <div class="team-score">{{ game.goals.away }}</div>
+                                    </div>
+                                </div>
+                                <div class="game-status">
+                                    <span class="period">{{ game.fixture.status.elapsed }}'</span>
+                                    <span class="venue">{{ game.fixture.venue.name }}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Play-by-Play -->
+                            {% set fixture_id = game.fixture.id %}
+                            {% if play_by_play.get(fixture_id) %}
+                            <div class="play-by-play-section">
+                                <h3 class="play-by-play-title">Play-by-Play</h3>
+                                <div class="play-by-play-list">
+                                    {% for play in play_by_play[fixture_id] %}
+                                    <div class="play-item">
+                                        <div class="play-time">{{ play.time }}</div>
+                                        <div class="play-details">
+                                            <div class="play-event">{{ play.event }}</div>
+                                            <div class="play-description">{{ play.description }}</div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Upcoming Games -->
+                {% if games_data.upcoming %}
+                <div class="upcoming-games-section">
+                    <h2 class="section-title">Upcoming Games</h2>
+                    <div class="games-grid">
+                        {% for game in games_data.upcoming %}
+                        <div class="game-card">
+                            <div class="game-date">{{ game.fixture.date[:10] }}</div>
+                            <div class="game-teams">
+                                <div class="team">
+                                    <div class="team-abbrev">{{ get_abbrev(sport_key, game.teams.home.name) }}</div>
+                                    <div class="team-name">{{ game.teams.home.name }}</div>
+                                </div>
+                                <div class="vs">vs</div>
+                                <div class="team">
+                                    <div class="team-abbrev">{{ get_abbrev(sport_key, game.teams.away.name) }}</div>
+                                    <div class="team-name">{{ game.teams.away.name }}</div>
+                                </div>
+                            </div>
+                            <div class="game-venue">{{ game.fixture.venue.name }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Recent Results -->
+                {% if games_data.recent %}
+                <div class="recent-games-section">
+                    <h2 class="section-title">Recent Results</h2>
+                    <div class="games-grid">
+                        {% for game in games_data.recent %}
+                        <div class="game-card completed">
+                            <div class="game-date">{{ game.fixture.date[:10] }}</div>
+                            <div class="game-teams">
+                                <div class="team">
+                                    <div class="team-abbrev">{{ get_abbrev(sport_key, game.teams.home.name) }}</div>
+                                    <div class="team-score">{{ game.goals.home }}</div>
+                                </div>
+                                <div class="vs">vs</div>
+                                <div class="team">
+                                    <div class="team-abbrev">{{ get_abbrev(sport_key, game.teams.away.name) }}</div>
+                                    <div class="team-score">{{ game.goals.away }}</div>
+                                </div>
+                            </div>
+                            <div class="game-status-badge">Final</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- News Tab -->
+            <div class="tab-panel" id="news-tab">
+                <div class="news-section">
+                    <h2 class="section-title">Latest News</h2>
+                    <div class="news-grid">
+                        {% for article in news_data %}
+                        <div class="news-card">
+                            <div class="news-date">{{ article.date }}</div>
+                            <h3 class="news-title">{{ article.title }}</h3>
+                            <p class="news-summary">{{ article.summary }}</p>
+                            <div class="news-source">{{ article.source }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Standings Tab -->
+            <div class="tab-panel" id="standings-tab">
+                <div class="standings-section">
+                    <h2 class="section-title">Standings</h2>
+                    <div class="standings-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Team</th>
+                                    <th>W</th>
+                                    <th>L</th>
+                                    {% if sport_key == 'nhl' %}
+                                    <th>Pts</th>
+                                    {% endif %}
+                                    <th>Win %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for team in standings_data %}
+                                <tr>
+                                    <td class="rank">{{ team.rank }}</td>
+                                    <td class="team-name">{{ team.team }}</td>
+                                    <td>{{ team.wins }}</td>
+                                    <td>{{ team.losses }}</td>
+                                    {% if sport_key == 'nhl' %}
+                                    <td>{{ team.points }}</td>
+                                    {% endif %}
+                                    <td>{{ "%.3f"|format(team.win_pct) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stats Tab -->
+            <div class="tab-panel" id="stats-tab">
+                <div class="stats-section">
+                    <h2 class="section-title">Season Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Games</div>
+                            <div class="stat-value">{{ stats_data.total_games }}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Games Played</div>
+                            <div class="stat-value">{{ stats_data.games_played }}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Games Remaining</div>
+                            <div class="stat-value">{{ stats_data.games_remaining }}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Top Scorer</div>
+                            <div class="stat-value">{{ stats_data.top_scorer }}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Most Wins</div>
+                            <div class="stat-value">{{ stats_data.most_wins }}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Score</div>
+                            <div class="stat-value">{{ stats_data.avg_score }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/sport_page.js') }}"></script>
+</body>
+</html>
+

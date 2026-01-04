@@ -1,0 +1,21 @@
+{
+  "user_id": "58dabccb-5f8a-4596-b9c5-3c1559a29a13",
+  "selected_sports": [
+    "nfl",
+    "nhl",
+    "nba",
+    "mlb",
+    "cricket",
+    "formula1"
+  ],
+  "favorites": {
+    "nfl": "New England Patriots",
+    "nhl": "Boston Bruins",
+    "nba": "Boston Celtics",
+    "mlb": "Boston Red Sox",
+    "cricket": "India",
+    "formula1": "Alexander Albon"
+  },
+  "updated_at": "2026-01-03T15:10:57.906358",
+  "created_at": "2026-01-03T15:10:04.462856"
+}

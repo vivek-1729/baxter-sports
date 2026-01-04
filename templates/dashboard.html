@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Top Navbar - Transparent with Tabs in Top Right -->
+        <nav class="top-navbar" id="topNavbar">
+            <div class="navbar-sports">
+                {% for sport_key in selected_sports %}
+                <a href="{{ url_for('sport_page', sport_key=sport_key) }}" class="navbar-sport-btn" data-sport="{{ sport_key }}">
+                    <span class="sport-icon">{{ sports[sport_key].icon }}</span>
+                    <span class="sport-name">{{ sports[sport_key].name }}</span>
+                </a>
+                {% endfor %}
+                <a href="{{ url_for('calendar') }}" class="navbar-sport-btn calendar-btn">
+                    <span class="sport-icon">📅</span>
+                    <span class="sport-name">Calendar</span>
+                </a>
+            </div>
+            <div class="navbar-user">
+                {% if username and not is_public %}
+                <a href="{{ url_for('preferences') }}" class="user-menu-btn">
+                    <span class="user-icon">👤</span>
+                    <span class="username">{{ username }}</span>
+                </a>
+                {% elif is_public %}
+                <a href="{{ url_for('login') }}" class="login-btn">
+                    <span class="login-icon">🔐</span>
+                    <span>Login</span>
+                </a>
+                {% endif %}
+            </div>
+        </nav>
+        
+        <!-- Hero Section -->
+        <div class="hero-section" id="heroSection">
+            <div class="hero-background" id="heroBackground"></div>
+            <div class="hero-overlay"></div>
+            
+            <!-- Hero Content -->
+            <div class="hero-content-wrapper">
+                <div class="hero-content" id="heroContent">
+                    {% if timeline_events %}
+                    {% set first_event = timeline_events[0] %}
+                    <div class="hero-main">
+                        <div class="hero-badges">
+                            <div class="hero-badge">{{ sports[first_event.sport_key].name }}</div>
+                            {% if first_event.get('is_live') %}
+                            <div class="hero-live-badge">LIVE</div>
+                            {% endif %}
+                        </div>
+                        
+                        <h1 class="hero-title" id="heroTitle">
+                            {% if first_event.teams.home.name and first_event.teams.away.name %}
+                                {{ first_event.teams.home.name }} vs {{ first_event.teams.away.name }}
+                            {% else %}
+                                {{ first_event.league.name }}
+                            {% endif %}
+                        </h1>
+                        
+                        <div class="hero-meta" id="heroMeta">
+                            {% if first_event.get('is_live') %}
+                            <span class="hero-status">{{ first_event.fixture.status.elapsed }}'</span>
+                            <span class="hero-score">{{ first_event.goals.home }} - {{ first_event.goals.away }}</span>
+                            {% elif first_event.get('is_completed') %}
+                            <span class="hero-status">Final</span>
+                            <span class="hero-score">{{ first_event.goals.home }} - {{ first_event.goals.away }}</span>
+                            {% else %}
+                            <span class="hero-date">{{ first_event.fixture.date[:10] }}</span>
+                            <span class="hero-time">{{ first_event.fixture.date[11:16] }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        <p class="hero-description" id="heroDescription">
+                            {% if first_event.fixture.venue.name %}
+                            {{ first_event.fixture.venue.name }}, {{ first_event.fixture.venue.city }}
+                            {% else %}
+                            Upcoming sports event
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <!-- Quick Info Cards -->
+                    <div class="quick-info-cards">
+                        {% if hero_data.get('stats') %}
+                        <div class="quick-info-card" data-modal="stats">
+                            <div class="quick-info-header">
+                                <h3 class="quick-info-title">Stats</h3>
+                                <span class="quick-info-more">View All →</span>
+                            </div>
+                            <div class="quick-info-content">
+                                <div class="quick-stat">
+                                    <div class="quick-stat-value">{{ hero_data.stats.wins }}-{{ hero_data.stats.losses }}</div>
+                                    <div class="quick-stat-label">Record</div>
+                                </div>
+                                <div class="quick-stat">
+                                    <div class="quick-stat-value">{{ "%.1f"|format(hero_data.stats.win_percentage * 100) }}%</div>
+                                    <div class="quick-stat-label">Win %</div>
+                                </div>
+                                <div class="quick-stat">
+                                    <div class="quick-stat-value">#{{ hero_data.stats.rank }}</div>
+                                    <div class="quick-stat-label">Rank</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if hero_data.get('standings') %}
+                        <div class="quick-info-card" data-modal="standings">
+                            <div class="quick-info-header">
+                                <h3 class="quick-info-title">Standings</h3>
+                                <span class="quick-info-more">View All →</span>
+                            </div>
+                            <div class="quick-info-content">
+                                {% for standing_group in hero_data.standings %}
+                                    {% for group in standing_group.league.standings %}
+                                        {% for team in group[:3] %}
+                                        <div class="quick-standing-item">
+                                            <span class="quick-standing-rank">#{{ team.rank }}</span>
+                                            <span class="quick-standing-team">{{ team.team.name }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if hero_data.get('news') %}
+                        <div class="quick-info-card" data-modal="news">
+                            <div class="quick-info-header">
+                                <h3 class="quick-info-title">News</h3>
+                                <span class="quick-info-more">View All →</span>
+                            </div>
+                            <div class="quick-info-content">
+                                {% for article in hero_data.news[:2] %}
+                                <div class="quick-news-item">
+                                    <div class="quick-news-title">{{ article.title }}</div>
+                                    <div class="quick-news-date">{{ article.date }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <h1 class="hero-title">Welcome to Sports Dashboard</h1>
+                    <p class="hero-description">Select your favorite sports to get started</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- First Row Cards - Fixed at Bottom -->
+        <div class="cards-section cards-section-first" id="cardsSectionFirst">
+            <div class="cards-header">
+                <h2 class="cards-title">Up Next</h2>
+            </div>
+            
+            <div class="cards-rail" id="cardsRailFirst">
+                {% for event in first_row_events %}
+                <div class="small-card" 
+                     data-event-id="{{ event.fixture.id }}"
+                     data-sport="{{ event.sport_key }}"
+                     data-background-image="{{ event.background_image or '' }}"
+                     {% if loop.first %}data-selected="true"{% endif %}>
+                     
+                     {% if event.get('is_favorite') %}
+                     <div class="card-favorite-badge">❤️</div>
+                     {% endif %}
+                     
+                     {% if event.get('is_live') %}
+                     <div class="card-live-badge">LIVE</div>
+                     {% endif %}
+                     
+                     <div class="small-card-image">
+                         {% if event.background_image %}
+                         <img src="{{ event.background_image }}" alt="{{ event.teams.home.name if event.teams.home.name else event.league.name }}" loading="lazy">
+                         {% else %}
+                         <div class="card-placeholder">{{ sports[event.sport_key].icon }}</div>
+                         {% endif %}
+                     </div>
+                     
+                     <div class="small-card-content">
+                         <div class="card-sport-label">{{ sports[event.sport_key].name }}</div>
+                         
+                         {% if event.teams.home.name and event.teams.away.name %}
+                         <div class="card-matchup">
+                             <div class="card-team-abbrev {% if event.get('is_favorite') and favorites.get(event.sport_key, '').lower() in event.teams.home.name.lower() %}highlighted{% endif %}">
+                                 {{ get_abbrev(event.sport_key, event.teams.home.name) }}
+                             </div>
+                             <div class="card-vs">vs</div>
+                             <div class="card-team-abbrev {% if event.get('is_favorite') and favorites.get(event.sport_key, '').lower() in event.teams.away.name.lower() %}highlighted{% endif %}">
+                                 {{ get_abbrev(event.sport_key, event.teams.away.name) }}
+                             </div>
+                         </div>
+                         {% else %}
+                         <div class="card-event-name">{{ event.league.name }}</div>
+                         {% endif %}
+                         
+                         <div class="card-meta">
+                             {% if event.get('is_live') %}
+                             <span>{{ event.fixture.status.elapsed }}'</span>
+                             <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
+                             {% elif event.get('is_completed') %}
+                             <span>Final</span>
+                             <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
+                             {% else %}
+                             <span>{{ event.fixture.date[:10] }}</span>
+                             {% endif %}
+                         </div>
+                     </div>
+                 </div>
+                 {% endfor %}
+             </div>
+         </div>
+         
+         <!-- Second Row Cards - Below Viewport -->
+         {% if second_row_events %}
+         <div class="cards-section cards-section-second" id="cardsSectionSecond">
+             <div class="cards-header">
+                 <h2 class="cards-title">More Events</h2>
+             </div>
+             
+             <div class="cards-rail" id="cardsRailSecond">
+                 {% for event in second_row_events %}
+                 <div class="small-card" 
+                      data-event-id="{{ event.fixture.id }}"
+                      data-sport="{{ event.sport_key }}"
+                      data-background-image="{{ event.background_image or '' }}">
+                      
+                      {% if event.get('is_favorite') %}
+                      <div class="card-favorite-badge">❤️</div>
+                      {% endif %}
+                      
+                      {% if event.get('is_live') %}
+                      <div class="card-live-badge">LIVE</div>
+                      {% endif %}
+                      
+                      <div class="small-card-image">
+                          {% if event.background_image %}
+                          <img src="{{ event.background_image }}" alt="{{ event.teams.home.name if event.teams.home.name else event.league.name }}" loading="lazy">
+                          {% else %}
+                          <div class="card-placeholder">{{ sports[event.sport_key].icon }}</div>
+                          {% endif %}
+                      </div>
+                      
+                      <div class="small-card-content">
+                          <div class="card-sport-label">{{ sports[event.sport_key].name }}</div>
+                          
+                          {% if event.teams.home.name and event.teams.away.name %}
+                          <div class="card-matchup">
+                              <div class="card-team-abbrev {% if event.get('is_favorite') and favorites.get(event.sport_key, '').lower() in event.teams.home.name.lower() %}highlighted{% endif %}">
+                                  {{ get_abbrev(event.sport_key, event.teams.home.name) }}
+                              </div>
+                              <div class="card-vs">vs</div>
+                              <div class="card-team-abbrev {% if event.get('is_favorite') and favorites.get(event.sport_key, '').lower() in event.teams.away.name.lower() %}highlighted{% endif %}">
+                                  {{ get_abbrev(event.sport_key, event.teams.away.name) }}
+                              </div>
+                          </div>
+                          {% else %}
+                          <div class="card-event-name">{{ event.league.name }}</div>
+                          {% endif %}
+                          
+                          <div class="card-meta">
+                              {% if event.get('is_live') %}
+                              <span>{{ event.fixture.status.elapsed }}'</span>
+                              <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
+                              {% elif event.get('is_completed') %}
+                              <span>Final</span>
+                              <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
+                              {% else %}
+                              <span>{{ event.fixture.date[:10] }}</span>
+                              {% endif %}
+                          </div>
+                      </div>
+                  </div>
+                  {% endfor %}
+              </div>
+          </div>
+          {% endif %}
+        
+        <!-- Modals -->
+        <div class="modal-overlay" id="modalOverlay">
+            <div class="modal" id="modal">
+                <button class="modal-close" id="modalClose">×</button>
+                <div class="modal-content" id="modalContent"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Data for JavaScript -->
+    <script type="application/json" id="modalDataScript">
+    {
+        "stats": {{ hero_data.get('stats', {}) | tojson }},
+        "standings": {{ hero_data.get('standings', []) | tojson }},
+        "news": {{ hero_data.get('news', []) | tojson }}
+    }
+    </script>
+    
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

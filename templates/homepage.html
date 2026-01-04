@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports Dashboard - Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/homepage.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="homepage-container">
+        <div class="hero-image" id="heroImage"></div>
+        <div class="hero-overlay"></div>
+        
+        <div class="content-wrapper">
+            <div class="logo-section">
+                <h1 class="main-title">Sports Dashboard</h1>
+                <p class="subtitle">Your gateway to live sports action</p>
+            </div>
+            
+            <div class="actions-section">
+                <a href="{{ url_for('live_games') }}" class="action-btn primary">
+                    <span class="btn-icon">⚡</span>
+                    <span class="btn-text">See Live Games</span>
+                </a>
+                <a href="{{ url_for('login') }}" class="action-btn secondary">
+                    <span class="btn-icon">🔐</span>
+                    <span class="btn-text">Login to See Your Sports</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Set NFL action image as background
+        const heroImage = document.getElementById('heroImage');
+        heroImage.style.backgroundImage = "url('https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1920&q=80')";
+    </script>
+</body>
+</html>
+

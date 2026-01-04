@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports Dashboard - Select Your Sports</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 Sports Dashboard</h1>
+            <p class="subtitle">Select the sports you want to follow</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('select_sports') }}" class="sports-form">
+            <div class="sports-grid">
+                {% for sport_key, sport_info in sports.items() %}
+                <label class="sport-card">
+                    <input type="checkbox" name="sports" value="{{ sport_key }}" class="sport-checkbox">
+                    <div class="card-content">
+                        <div class="sport-icon">{{ sport_info.icon }}</div>
+                        <div class="sport-name">{{ sport_info.name }}</div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary" id="continue-btn" disabled>
+                    <span>Continue</span>
+                    <span class="btn-icon">→</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Enable/disable continue button based on selections
+        const checkboxes = document.querySelectorAll('.sport-checkbox');
+        const continueBtn = document.getElementById('continue-btn');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                const anySelected = Array.from(checkboxes).some(cb => cb.checked);
+                continueBtn.disabled = !anySelected;
+            });
+        });
+    </script>
+</body>
+</html>
+

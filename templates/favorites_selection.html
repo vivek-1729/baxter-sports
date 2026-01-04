@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports Dashboard - Select Favorites</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container favorites-container">
+        <div class="header">
+            <h1>⭐ Select Your Favorites</h1>
+            <p class="subtitle">Choose your favorite teams or players for each sport</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('save_favorites') }}" class="favorites-form">
+            {% for sport_key, sport_info in sports_data.items() %}
+            <div class="favorite-section">
+                <div class="favorite-header">
+                    <div class="icon-wrapper">
+                        <span class="sport-icon-large">{{ sport_info.icon }}</span>
+                    </div>
+                    <div class="header-text">
+                        <h2>{{ sport_info.name }}</h2>
+                        <p class="sport-subtitle">Select your favorite {{ 'team' if sport_info.type == 'team' else 'player/driver' }}</p>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="favorite_{{ sport_key }}">
+                        <span class="label-icon">❤️</span>
+                        Favorite {{ 'Team' if sport_info.type == 'team' else 'Player/Driver' }}
+                    </label>
+                    <div class="autocomplete-wrapper">
+                        <input 
+                            type="text" 
+                            id="favorite_{{ sport_key }}" 
+                            name="favorite_{{ sport_key }}" 
+                            placeholder="Start typing to search..."
+                            class="favorite-input autocomplete-input"
+                            data-sport="{{ sport_key }}"
+                            autocomplete="off"
+                        >
+                        <div class="autocomplete-dropdown" id="dropdown_{{ sport_key }}"></div>
+                        <div class="input-icon">🔍</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="window.history.back()">
+                    <span>←</span> Back
+                </button>
+                <button type="submit" class="btn-primary">
+                    <span>Save Preferences</span>
+                    <span class="btn-icon">✨</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
+</body>
+</html>
