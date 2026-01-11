@@ -4,20 +4,128 @@ Handles user preferences for sports and favorite teams/players
 """
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
-from sports_backend import SportsAPIClient
-from dummy_data import get_dummy_fixtures, get_dummy_results, get_dummy_live_events, get_dummy_news, get_dummy_stats, get_dummy_standings
+from hybrid_data import get_live_data, get_upcoming_data, get_recent_data, get_standings_data, get_news_data, get_stats_data, get_sport_games
+from dummy_data import get_dummy_play_by_play, get_sport_news, get_sport_standings, get_sport_stats
 from image_resolver import get_image_resolver
 from preferences_storage import get_preferences_storage
 from team_abbreviations import get_team_abbreviation
 from user_auth import register_user, authenticate_user, get_user_by_id
-from datetime import datetime, timedelta
+from smart_cache import prime_cache, CACHE_DURATIONS
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 import os
 import uuid
+import hybrid_data
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 app.permanent_session_lifetime = timedelta(days=30)  # Remember login for 30 days
+
+# Flag to track if cache has been warmed
+_cache_warmed = False
+
+# ========== HELPER FUNCTIONS FOR HERO DATA ==========
+
+def get_game_time_with_timezone(game_date_str):
+    """Generate game time with timezone from date string"""
+    try:
+        game_date = datetime.fromisoformat(game_date_str.replace('Z', '+00:00'))
+        # Format as "7:30 PM PST"
+        return game_date.strftime('%I:%M %p PST')
+    except:
+        return "7:30 PM PST"  # Default fallback
+
+def get_broadcast_network(sport_key):
+    """Get broadcast network based on sport"""
+    networks = {
+        'nfl': 'ESPN',
+        'nba': 'TNT',
+        'nhl': 'NBC',
+        'mlb': 'MLB Network',
+        'cricket': 'Star Sports',
+        'formula1': 'ESPN',
+        'tennis': 'Tennis Channel',
+        'golf': 'Golf Channel'
+    }
+    return networks.get(sport_key, 'ESPN')
+
+def get_game_preview(home_team, away_team, sport_key):
+    """Generate dummy game preview text"""
+    previews = [
+        f"{home_team} looking to extend their win streak as they face division rival {away_team}. Key matchups in all areas of the game will determine the outcome.",
+        f"High-stakes showdown as {home_team} hosts {away_team}. Both teams enter this game riding momentum from recent victories.",
+        f"{away_team} travels to face {home_team} in what promises to be an intense battle. Playoff implications loom large for both squads.",
+        f"Classic rivalry renewed as {home_team} takes on {away_team}. Expect a physical, hard-fought contest from start to finish."
+    ]
+    import random
+    return random.choice(previews)
+
+def get_team_news(team_name):
+    """Generate dummy team news"""
+    news_items = [
+        f"{team_name}'s star player scored 35+ points in their last game, leading the team to victory.",
+        f"Coach confirms all key players are healthy and ready for tonight's matchup.",
+        f"{team_name} has won 4 of their last 5 games, showing strong form heading into this contest.",
+        f"Team practices new defensive schemes to counter opponent's offensive strategies."
+    ]
+    import random
+    return random.choice(news_items)
+
+def get_game_recap(home_team, away_team, home_score, away_score):
+    """Generate dummy game recap"""
+    winner = home_team if home_score > away_score else away_team
+    loser = away_team if home_score > away_score else home_team
+    recaps = [
+        f"{winner} rallied in the 4th quarter with clutch performances to seal the victory. Key defensive stops with under 3 minutes remaining proved decisive. Final stats show {winner} dominated in rebounds and assists.",
+        f"In a closely contested battle, {winner} emerged victorious over {loser}. The game was tied going into the final period before {winner} pulled away. Star players delivered when it mattered most.",
+        f"{winner} controlled the pace from start to finish, never trailing in this dominant performance against {loser}. Stellar defense held opponents to season-low scoring totals.",
+        f"Comeback complete! {winner} overcame a double-digit deficit to defeat {loser}. The momentum shift came in the 3rd quarter and {winner} never looked back."
+    ]
+    import random
+    return random.choice(recaps)
+
+def get_game_highlights():
+    """Generate dummy highlight items"""
+    highlights = [
+        {"title": "4th Quarter Comeback", "duration": "2:47"},
+        {"title": "Game-Winning Drive", "duration": "3:12"},
+        {"title": "Top Plays of the Game", "duration": "5:34"},
+        {"title": "Post-Game Interviews", "duration": "4:21"}
+    ]
+    return highlights
+
+def warm_cache():
+    """Pre-fetch data to warm cache before first user visit"""
+    global _cache_warmed
+    if _cache_warmed:
+        return
+    
+    try:
+        print("\n" + "="*60)
+        print("🚀 Starting cache warm-up...")
+        print("="*60)
+        
+        # Define what to pre-fetch (only long-lived cache)
+        cache_warmup = {
+            'upcoming_games_all': (hybrid_data.get_upcoming_data, CACHE_DURATIONS['upcoming_games']),
+            'recent_games_all': (hybrid_data.get_recent_data, CACHE_DURATIONS['recent_games']),
+        }
+        
+        prime_cache(cache_warmup)
+        print("="*60)
+        print("✅ Cache warmed! First page load will be instant!")
+        print("="*60 + "\n")
+        _cache_warmed = True
+    except Exception as e:
+        print(f"⚠️  Cache warm-up failed: {e}")
+        print("   (App will still work, just slower on first load)")
+        _cache_warmed = True  # Mark as attempted to avoid retrying
+
+# Warm cache before first request
+@app.before_request
+def warm_cache_once():
+    """Run cache warming only once on first request"""
+    warm_cache()
 
 # Sport configuration
 SPORTS = {
@@ -190,11 +298,11 @@ def live_games():
     selected_sports = list(SPORTS.keys())
     username = session.get('username', '')
     
-    # Build timeline with dummy data
+    # Build timeline with real API data (with dummy fallback)
     timeline_events = []
-    live_events = get_dummy_live_events()
-    upcoming_fixtures = get_dummy_fixtures()
-    recent_results = get_dummy_results()
+    live_events = get_live_data()
+    upcoming_fixtures = get_upcoming_data()
+    recent_results = get_recent_data()
     
     # Process all events
     for sport_key in selected_sports:
@@ -217,23 +325,51 @@ def live_games():
                 event['is_completed'] = True
                 timeline_events.append(event)
     
-    # Sort events
+    # Sort events intelligently
     def get_event_date(event):
         try:
             date_str = event.get('fixture', {}).get('date', '')
             if date_str:
                 if 'T' in date_str:
-                    return datetime.fromisoformat(date_str.replace('Z', ''))
+                    # Handle UTC timezone
+                    return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
                 else:
                     return datetime.strptime(date_str, '%Y-%m-%d')
             return datetime.now()
         except:
             return datetime.now()
     
-    timeline_events.sort(key=lambda x: (
-        0 if x.get('is_live') else 1,
-        get_event_date(x)
-    ))
+    # Sort: Live first, then upcoming (next 3 days), then recent (past)
+    # Use UTC time for comparison since API dates are in UTC
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    three_days_from_now = now + timedelta(days=3)
+    
+    def get_sort_key(event):
+        event_date = get_event_date(event)
+        
+        # Make event_date timezone-aware if it's naive
+        if event_date.tzinfo is None:
+            event_date = event_date.replace(tzinfo=timezone.utc)
+        
+        # Priority 0: Live events (most important)
+        if event.get('is_live'):
+            return (0, event_date)
+        
+        # Priority 1: Completed/past events should be at the END
+        # Check is_completed flag first, then date
+        elif event.get('is_completed') or event_date < now:
+            return (3, -event_date.timestamp())  # Priority 3, most recent first
+        
+        # Priority 2: Upcoming events in next 3 days (sorted by date, soonest first)
+        elif event_date > now and event_date <= three_days_from_now:
+            return (1, event_date)
+        
+        # Priority 3: Future events beyond 3 days
+        else:
+            return (2, event_date)
+    
+    timeline_events.sort(key=get_sort_key)
     
     first_row_events = timeline_events[:8]
     second_row_events = timeline_events[8:]
@@ -257,9 +393,9 @@ def live_games():
             team_name = first_event['teams']['away']['name']
         
         if team_name:
-            hero_data['news'] = get_dummy_news(team_name)
-            hero_data['stats'] = get_dummy_stats(team_name)
-            hero_data['standings'] = get_dummy_standings(first_event['sport_key'])
+            hero_data['news'] = get_news_data(team_name)
+            hero_data['stats'] = get_stats_data(team_name, first_event['sport_key'])  # Pass sport_key for real data!
+            hero_data['standings'] = get_standings_data(first_event['sport_key'])
     
     modal_data = {}
     if hero_data:
@@ -367,6 +503,92 @@ def get_suggestions(sport):
     return jsonify({'suggestions': filtered})
 
 
+@app.route('/api/hero-data', methods=['POST'])
+def get_hero_data():
+    """Get hero data (stats, news, standings) for a specific event - prioritizes user's favorite team"""
+    try:
+        event = request.json.get('event', {})
+        if not event:
+            return jsonify({'error': 'No event data provided'}), 400
+        
+        home_team = event.get('teams', {}).get('home', {}).get('name')
+        away_team = event.get('teams', {}).get('away', {}).get('name')
+        sport_key = event.get('sport_key')
+        
+        if not sport_key or (not home_team and not away_team):
+            return jsonify({'error': 'Missing team or sport information'}), 400
+        
+        # Determine which team to show stats for (prioritize user's favorite)
+        team_name = None
+        user_favorites = session.get('favorites', {}).get(sport_key, [])
+        
+        # Check if either team is the user's favorite
+        for fav in user_favorites:
+            fav_lower = fav.lower()
+            if home_team and fav_lower in home_team.lower():
+                team_name = home_team
+                break
+            elif away_team and fav_lower in away_team.lower():
+                team_name = away_team
+                break
+        
+        # If no favorite found, default to home team, then away team
+        if not team_name:
+            team_name = home_team or away_team
+        
+        # Get hero data
+        hero_data = {
+            'stats': get_stats_data(team_name, sport_key),
+            'home_team_stats': get_stats_data(home_team, sport_key),  # Stats for home team
+            'away_team_stats': get_stats_data(away_team, sport_key),  # Stats for away team
+            'standings': get_standings_data(sport_key),
+            'news': get_news_data(team_name),
+            'selected_team': team_name,  # Let frontend know which team we selected
+            'game_time': get_game_time_with_timezone(event.get('fixture', {}).get('date', '')),
+            'network': get_broadcast_network(sport_key)
+        }
+        
+        # Add conditional data based on game status
+        if event.get('is_completed'):
+            hero_data['recap'] = get_game_recap(
+                home_team, away_team,
+                event.get('goals', {}).get('home', 0),
+                event.get('goals', {}).get('away', 0)
+            )
+            hero_data['highlights'] = get_game_highlights()
+        else:
+            hero_data['preview'] = get_game_preview(home_team, away_team, sport_key)
+            hero_data['team_news'] = get_team_news(team_name)
+        
+        return jsonify(hero_data)
+        
+    except Exception as e:
+        print(f"Error in /api/hero-data: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/standings', methods=['POST'])
+def get_standings():
+    """Get full standings for a sport (all divisions)"""
+    try:
+        sport_key = request.json.get('sport_key')
+        if not sport_key:
+            return jsonify({'error': 'No sport_key provided'}), 400
+        
+        # Get standings data
+        standings_data = get_standings_data(sport_key)
+        
+        return jsonify(standings_data)
+        
+    except Exception as e:
+        print(f"Error in /api/standings: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/save-favorites', methods=['POST'])
 def save_favorites():
     """Save user favorites to session and persistent storage"""
@@ -440,10 +662,10 @@ def dashboard():
     # Build timeline: Live → Upcoming → Recent
     timeline_events = []
     
-    # Get dummy data (will be replaced with API calls)
-    live_events = get_dummy_live_events()
-    upcoming_fixtures = get_dummy_fixtures()
-    recent_results = get_dummy_results()
+    # Get real API data (with dummy fallback)
+    live_events = get_live_data()
+    upcoming_fixtures = get_upcoming_data()
+    recent_results = get_recent_data()
     
     # Process live events
     for sport_key in selected_sports:
@@ -473,27 +695,73 @@ def dashboard():
                 event['is_favorite'] = _is_favorite_event(event, sport_key, favorites)
                 timeline_events.append(event)
     
-    # Sort by priority: Live first, then by date
+    # Categorize events with favorite-first prioritization
     def get_event_date(event):
         try:
             date_str = event.get('fixture', {}).get('date', '')
             if date_str:
                 # Handle various date formats
                 if 'T' in date_str:
-                    return datetime.fromisoformat(date_str.replace('Z', ''))
+                    # Handle UTC timezone
+                    return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
                 else:
                     return datetime.strptime(date_str, '%Y-%m-%d')
             return datetime.now()
         except:
             return datetime.now()
     
-    timeline_events.sort(key=lambda x: (
-        0 if x.get('is_live') else 1,  # Live events first
-        get_event_date(x)
-    ))
+    # Use UTC time for comparison since API dates are in UTC
+    now = datetime.now(timezone.utc)
+    three_days_from_now = now + timedelta(days=3)
+    three_days_ago = now - timedelta(days=3)
     
-    # Prioritize favorite events within same category
-    timeline_events.sort(key=lambda x: (0 if x.get('is_favorite') else 1), reverse=False)
+    # Categorize events into priority buckets
+    live_fav = []
+    upcoming_fav = []
+    recent_fav = []
+    live_non_fav = []
+    upcoming_non_fav = []
+    
+    for event in timeline_events:
+        event_date = get_event_date(event)
+        if event_date.tzinfo is None:
+            event_date = event_date.replace(tzinfo=timezone.utc)
+        
+        is_fav = event.get('is_favorite', False)
+        is_live = event.get('is_live', False)
+        is_completed = event.get('is_completed', False) or event_date < now
+        
+        # Categorize based on status and favorite flag
+        if is_live and is_fav:
+            live_fav.append((event, event_date))
+        elif is_live and not is_fav:
+            live_non_fav.append((event, event_date))
+        elif not is_completed and event_date <= three_days_from_now and is_fav:
+            # Upcoming favorite (next 3 days)
+            upcoming_fav.append((event, event_date))
+        elif is_completed and event_date >= three_days_ago and is_fav:
+            # Recent favorite (last 3 days)
+            recent_fav.append((event, event_date))
+        elif not is_completed and event_date <= three_days_from_now and not is_fav:
+            # Upcoming non-favorite (next 3 days) - only if space
+            upcoming_non_fav.append((event, event_date))
+        # Everything else is filtered out (non-fav past, non-fav far future)
+    
+    # Sort within each bucket
+    live_fav.sort(key=lambda x: x[1])
+    live_non_fav.sort(key=lambda x: x[1])
+    upcoming_fav.sort(key=lambda x: x[1])
+    upcoming_non_fav.sort(key=lambda x: x[1])
+    recent_fav.sort(key=lambda x: -x[1].timestamp())  # Most recent first
+    
+    # Combine in priority order: Favorites first, then non-favorites
+    timeline_events = (
+        [e for e, _ in live_fav] +
+        [e for e, _ in upcoming_fav] +
+        [e for e, _ in recent_fav] +
+        [e for e, _ in live_non_fav] +
+        [e for e, _ in upcoming_non_fav]
+    )
     
     # Split events into two rows: first row (viewport) and second row (below)
     first_row_events = timeline_events[:8]  # First 8 events in viewport
@@ -511,17 +779,51 @@ def dashboard():
     hero_data = {}
     if timeline_events:
         first_event = timeline_events[0]
-        # Get team name for news/stats
-        team_name = None
-        if first_event.get('teams', {}).get('home', {}).get('name'):
-            team_name = first_event['teams']['home']['name']
-        elif first_event.get('teams', {}).get('away', {}).get('name'):
-            team_name = first_event['teams']['away']['name']
         
-        if team_name:
-            hero_data['news'] = get_dummy_news(team_name)
-            hero_data['stats'] = get_dummy_stats(team_name)
-            hero_data['standings'] = get_dummy_standings(first_event['sport_key'])
+        # Get team name for news/stats - prioritize user's favorite team
+        home_team = first_event.get('teams', {}).get('home', {}).get('name')
+        away_team = first_event.get('teams', {}).get('away', {}).get('name')
+        sport_key = first_event.get('sport_key')
+        
+        team_name = None
+        if sport_key:
+            user_favorites = favorites.get(sport_key, [])
+            
+            # Check if either team is the user's favorite
+            for fav in user_favorites:
+                fav_lower = fav.lower()
+                if home_team and fav_lower in home_team.lower():
+                    team_name = home_team
+                    break
+                elif away_team and fav_lower in away_team.lower():
+                    team_name = away_team
+                    break
+        
+        # If no favorite found, default to home team, then away team
+        if not team_name:
+            team_name = home_team or away_team
+        
+        if team_name and sport_key:
+            hero_data['news'] = get_news_data(team_name)
+            hero_data['stats'] = get_stats_data(team_name, sport_key)
+            hero_data['standings'] = get_standings_data(sport_key)
+            
+            # Add additional hero data
+            hero_data['game_time'] = get_game_time_with_timezone(first_event.get('fixture', {}).get('date', ''))
+            hero_data['network'] = get_broadcast_network(sport_key)
+            
+            if first_event.get('is_completed'):
+                # Completed game - add recap and highlights
+                hero_data['recap'] = get_game_recap(
+                    home_team, away_team,
+                    first_event.get('goals', {}).get('home', 0),
+                    first_event.get('goals', {}).get('away', 0)
+                )
+                hero_data['highlights'] = get_game_highlights()
+            else:
+                # Upcoming game - add preview and team news
+                hero_data['preview'] = get_game_preview(home_team, away_team, sport_key)
+                hero_data['team_news'] = get_team_news(team_name)
     
     # Prepare modal data (for JavaScript to use)
     modal_data = {}
@@ -572,8 +874,7 @@ def calendar():
     username = session.get('username', '')
     selected_sports = session.get('selected_sports', [])
     
-    # Get all games data
-    from dummy_data import get_sport_games
+    # Get all games data (using hybrid data - reuses dashboard cache!)
     all_games = {}
     for sport_key in selected_sports:
         games_data = get_sport_games(sport_key)
@@ -596,8 +897,7 @@ def sport_page(sport_key):
     username = session.get('username', '')
     is_public = not username
     
-    # Get all data for this sport
-    from dummy_data import get_sport_games, get_sport_news, get_sport_standings, get_sport_stats, get_dummy_play_by_play
+    # Get all data for this sport (using hybrid data)
     
     games_data = get_sport_games(sport_key)
     news_data = get_sport_news(sport_key)

@@ -11,7 +11,7 @@
 </head>
 <body>
     <div class="homepage-container">
-        <div class="hero-image" id="heroImage"></div>
+        <div class="hero-image" id="heroImage" style="background-image: url('https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1920&q=80&auto=format'); background-size: cover; background-position: center;"></div>
         <div class="hero-overlay"></div>
         
         <div class="content-wrapper">
@@ -33,11 +33,8 @@
         </div>
     </div>
     
-    <script>
-        // Set NFL action image as background
-        const heroImage = document.getElementById('heroImage');
-        heroImage.style.backgroundImage = "url('https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1920&q=80')";
-    </script>
+    <!-- Preload the image for faster loading -->
+    <link rel="preload" as="image" href="https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1920&q=80&auto=format">
 </body>
 </html>
 

@@ -237,17 +237,317 @@ body {
     animation: pulse 2s ease-in-out infinite;
 }
 
+.hero-final-badge {
+    display: inline-block;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    border-radius: 24px;
+    font-size: 1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #000;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
 }
 
-.hero-title {
+/* Prominent score display for completed games */
+.hero-score-display {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.hero-score-team {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+.hero-score-team.winner {
+    opacity: 1;
+}
+
+.hero-score-team-name {
+    font-size: 2.5rem;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.hero-score-team-score {
     font-size: 5rem;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-left: 24px;
+}
+
+.hero-score-team.winner .hero-score-team-score {
+    color: #FFD700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+/* Team Info Row - New Design with Logos */
+.hero-team-info-row {
+    display: flex;
+    justify-content: space-around;
+    gap: 40px;
+    margin: 24px 0 32px;
+}
+
+.hero-team-block {
+    flex: 1;
+    text-align: center;
+}
+
+.hero-team-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.hero-team-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.hero-team-name {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.hero-team-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.hero-team-stat {
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.hero-stat-icon {
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+    padding: 0.25rem;
+    border-radius: 4px;
+}
+
+.hero-stat-icon:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.15);
+}
+
+/* Game Info Bar for Upcoming Games */
+.hero-game-info-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 20px 0 32px;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+.hero-info-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hero-info-icon {
+    font-size: 1.2rem;
+}
+
+.hero-info-divider {
+    color: rgba(255, 255, 255, 0.3);
+    margin: 0 4px;
+}
+
+/* Large Centered Score for Completed Games */
+.hero-score-large {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    margin: 32px 0;
+}
+
+.hero-score-number {
+    font-size: 6rem;
+    font-weight: 800;
+    letter-spacing: -3px;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.4);
+    transition: all 0.3s ease;
+}
+
+.hero-score-number.winner {
+    color: #FFD700;
+    text-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+}
+
+.hero-score-separator {
+    font-size: 3rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Content Boxes (Preview/Recap/News/Highlights) - Darker Design */
+.hero-content-boxes {
+    display: flex;
+    gap: 20px;
+    margin: 32px 0 24px;
+}
+
+.hero-content-box {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.hero-box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    user-select: none;
+}
+
+.hero-box-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hero-box-expand-icon {
+    font-size: 0.9rem;
+    transition: transform 0.3s ease;
+}
+
+.hero-box-expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.hero-box-icon {
+    font-size: 1.2rem;
+}
+
+.hero-box-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+}
+
+.hero-box-content {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    max-height: 150px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.hero-box-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.hero-box-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.hero-box-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+}
+
+.hero-box-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.hero-box-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Highlights List */
+.hero-highlights-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hero-highlight-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hero-highlight-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(4px);
+}
+
+.hero-highlight-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.hero-highlight-duration {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.hero-title {
+    font-size: 3.5rem;
     font-weight: 700;
     line-height: 1.1;
     letter-spacing: -0.02em;
     color: var(--text-primary);
+    margin: 16px 0;
     text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
@@ -577,6 +877,19 @@ body {
     gap: 3px;
 }
 
+.card-team {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.team-logo {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    border-radius: 2px;
+}
+
 .card-team-abbrev {
     font-size: 1.1rem;
     font-weight: 700;
@@ -586,7 +899,7 @@ body {
     letter-spacing: 0.5px;
 }
 
-.card-team-abbrev.highlighted {
+.card-team.highlighted .card-team-abbrev {
     color: #ffd700;
 }
 
@@ -886,4 +1199,153 @@ body {
     .modal-content {
         padding: 30px 20px;
     }
+}
+
+/* Standings Modal */
+.standings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.standings-modal.active {
+    display: flex;
+}
+
+.standings-modal-content {
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    max-width: 1200px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 30px;
+    position: relative;
+}
+
+.standings-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.standings-modal-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.standings-modal-close {
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.standings-modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.standings-divisions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+}
+
+.standings-division {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.standings-division-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.standings-table {
+    width: 100%;
+}
+
+.standings-table thead {
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.standings-table th {
+    padding: 10px 8px;
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+}
+
+.standings-table td {
+    padding: 12px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.95rem;
+}
+
+.standings-table tr:last-child td {
+    border-bottom: none;
+}
+
+.standings-rank {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    width: 40px;
+}
+
+.standings-team {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.standings-team-logo {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.standings-record {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.standings-modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.standings-modal-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.standings-modal-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.standings-modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }

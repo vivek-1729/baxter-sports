@@ -5,6 +5,8 @@ Decoupled from UI rendering, easily swappable.
 
 import requests
 import os
+import json
+import hashlib
 from typing import List, Optional, Dict
 import time
 
@@ -23,9 +25,52 @@ class ImageResolver:
             api_key: Google API key. If not provided, will try to get from environment variable
         """
         self.api_key = api_key or os.getenv('GOOGLE_API_KEY')
-        self.cache = {}  # Simple in-memory cache
+        self.cache = {}  # In-memory cache
+        self.cache_dir = 'data/image_cache'
+        os.makedirs(self.cache_dir, exist_ok=True)
+        self._load_cache_from_disk()  # Load persistent cache on startup
         self.last_request_time = 0
         self.min_request_interval = 0.5  # Rate limiting: 500ms between requests
+    
+    def _get_cache_file_path(self, query: str) -> str:
+        """Get file path for cached query"""
+        cache_key = hashlib.md5(query.lower().strip().encode()).hexdigest()
+        return os.path.join(self.cache_dir, f"{cache_key}.json")
+    
+    def _load_cache_from_disk(self):
+        """Load cache from disk on startup"""
+        if not os.path.exists(self.cache_dir):
+            return
+        
+        try:
+            for filename in os.listdir(self.cache_dir):
+                if filename.endswith('.json'):
+                    try:
+                        with open(os.path.join(self.cache_dir, filename), 'r') as f:
+                            data = json.load(f)
+                            query = data.get('query', '')
+                            urls = data.get('urls', [])
+                            if query and urls:
+                                self.cache[query.lower().strip()] = urls
+                    except (json.JSONDecodeError, IOError):
+                        # Skip corrupted cache files
+                        pass
+        except OSError:
+            # Directory doesn't exist or can't be read
+            pass
+    
+    def _save_cache_to_disk(self, query: str, urls: List[str]):
+        """Save cache to disk for persistence"""
+        if not urls:
+            return
+        
+        cache_file = self._get_cache_file_path(query)
+        try:
+            with open(cache_file, 'w') as f:
+                json.dump({'query': query, 'urls': urls}, f)
+        except IOError:
+            # Can't write to cache, continue without it
+            pass
     
     def _make_request(self, query: str) -> List[str]:
         """
@@ -45,10 +90,25 @@ class ImageResolver:
         if time_since_last < self.min_request_interval:
             time.sleep(self.min_request_interval - time_since_last)
         
-        # Check cache
+        # Check cache (in-memory first, then disk)
         cache_key = query.lower().strip()
         if cache_key in self.cache:
             return self.cache[cache_key]
+        
+        # Check disk cache
+        cache_file = self._get_cache_file_path(query)
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    data = json.load(f)
+                    urls = data.get('urls', [])
+                    if urls:
+                        # Load into memory cache for faster access
+                        self.cache[cache_key] = urls
+                        return urls
+            except (json.JSONDecodeError, IOError):
+                # Corrupted cache file, continue to API request
+                pass
         
         try:
             params = {
@@ -70,8 +130,10 @@ class ImageResolver:
                 items = data.get('items', [])
                 urls = [item.get('link', '') for item in items if item.get('link')]
                 
-                # Cache the results
-                self.cache[cache_key] = urls
+                # Cache the results (both in-memory and on disk)
+                if urls:
+                    self.cache[cache_key] = urls
+                    self._save_cache_to_disk(query, urls)
                 return urls
             else:
                 return []
