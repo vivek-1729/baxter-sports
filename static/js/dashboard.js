@@ -292,8 +292,21 @@
      * Update all hero elements with new comprehensive data
      */
     function updateAllHeroElements(heroData, event) {
+        const isCompleted = event.is_completed || false;
+        const heroTitle = document.getElementById('heroTitle');
+        
+        // Hide title for completed games, show for upcoming
+        if (heroTitle) {
+            if (isCompleted) {
+                heroTitle.style.display = 'none';
+            } else {
+                heroTitle.style.display = 'block';
+                heroTitle.textContent = `${event.teams?.home?.name || 'Home'} vs ${event.teams?.away?.name || 'Away'}`;
+            }
+        }
+        
         // Update team info row with records and standings
-        updateTeamInfo(heroData, event.sport_key);
+        updateTeamInfo(heroData, event.sport_key, event);
         
         // Update game-specific sections (score/game info/content boxes)
         updateGameSpecificSections(heroData, event);
@@ -302,47 +315,97 @@
     /**
      * Update team info row with records and standings
      */
-    function updateTeamInfo(heroData, sportKey) {
+    function updateTeamInfo(heroData, sportKey, event) {
         const teamInfoRow = document.getElementById('heroTeamInfo');
-        if (!teamInfoRow) return;
+        if (!teamInfoRow || !event) return;
         
-        const teamBlocks = teamInfoRow.querySelectorAll('.hero-team-block');
-        if (teamBlocks.length >= 2) {
-            // Update home team (first block)
-            if (heroData.home_team_stats && teamBlocks[0]) {
-                const statsDiv = teamBlocks[0].querySelector('.hero-team-stats');
-                if (statsDiv) {
-                    const stats = heroData.home_team_stats;
-                    statsDiv.innerHTML = `
-                        <div class="hero-team-stat">
-                            <span>${stats.wins}-${stats.losses}</span>
-                            <span class="hero-stat-icon" onclick="showStandingsModal('${sportKey}')">📊</span>
-                        </div>
-                        <div class="hero-team-stat">
-                            <span>#${stats.rank} in ${stats.division}</span>
-                            <span class="hero-stat-icon" onclick="showStandingsModal('${sportKey}')">📈</span>
-                        </div>
-                    `;
-                }
-            }
+        const homeTeam = event.teams?.home;
+        const awayTeam = event.teams?.away;
+        const isCompleted = event.is_completed || false;
+        
+        // If completed game, use the new layout with score in middle
+        if (isCompleted) {
+            const homeScore = event.goals?.home || 0;
+            const awayScore = event.goals?.away || 0;
             
-            // Update away team (second block)
-            if (heroData.away_team_stats && teamBlocks[1]) {
-                const statsDiv = teamBlocks[1].querySelector('.hero-team-stats');
-                if (statsDiv) {
-                    const stats = heroData.away_team_stats;
-                    statsDiv.innerHTML = `
+            teamInfoRow.className = 'hero-team-info-row-completed';
+            teamInfoRow.innerHTML = `
+                <div class="hero-team-block">
+                    <div class="hero-team-header">
+                        ${homeTeam?.logo ? `<img src="${homeTeam.logo}" alt="${homeTeam.name}" class="hero-team-logo">` : ''}
+                        <div class="hero-team-name">${homeTeam?.name || 'Home Team'}</div>
+                    </div>
+                    ${heroData.home_team_stats ? `
+                    <div class="hero-team-stats">
+                        <div class="hero-team-stat">${heroData.home_team_stats.wins}-${heroData.home_team_stats.losses}</div>
+                        <div class="hero-team-stat">#${heroData.home_team_stats.rank} in ${heroData.home_team_stats.division || 'Conference'}</div>
                         <div class="hero-team-stat">
-                            <span>${stats.wins}-${stats.losses}</span>
-                            <span class="hero-stat-icon" onclick="showStandingsModal('${sportKey}')">📊</span>
+                            <span class="hero-stat-icon" onclick="event.stopPropagation(); showStandingsModal('${sportKey}')">📊 View Standings</span>
                         </div>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div class="hero-score-middle">
+                    <div class="hero-score-display-small">
+                        <span class="hero-score-number-small ${homeScore > awayScore ? 'winner' : ''}">${homeScore}</span>
+                        <span class="hero-score-separator-small">-</span>
+                        <span class="hero-score-number-small ${awayScore > homeScore ? 'winner' : ''}">${awayScore}</span>
+                    </div>
+                    <span class="hero-score-final-badge-small">FINAL</span>
+                </div>
+                
+                <div class="hero-team-block">
+                    <div class="hero-team-header">
+                        ${awayTeam?.logo ? `<img src="${awayTeam.logo}" alt="${awayTeam.name}" class="hero-team-logo">` : ''}
+                        <div class="hero-team-name">${awayTeam?.name || 'Away Team'}</div>
+                    </div>
+                    ${heroData.away_team_stats ? `
+                    <div class="hero-team-stats">
+                        <div class="hero-team-stat">${heroData.away_team_stats.wins}-${heroData.away_team_stats.losses}</div>
+                        <div class="hero-team-stat">#${heroData.away_team_stats.rank} in ${heroData.away_team_stats.division || 'Conference'}</div>
                         <div class="hero-team-stat">
-                            <span>#${stats.rank} in ${stats.division}</span>
-                            <span class="hero-stat-icon" onclick="showStandingsModal('${sportKey}')">📈</span>
+                            <span class="hero-stat-icon" onclick="event.stopPropagation(); showStandingsModal('${sportKey}')">📊 View Standings</span>
                         </div>
-                    `;
-                }
-            }
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        } else {
+            // Upcoming games - use standard layout
+            teamInfoRow.className = 'hero-team-info-row';
+            teamInfoRow.innerHTML = `
+                <div class="hero-team-block">
+                    <div class="hero-team-header">
+                        ${homeTeam?.logo ? `<img src="${homeTeam.logo}" alt="${homeTeam.name}" class="hero-team-logo">` : ''}
+                        <div class="hero-team-name">${homeTeam?.name || 'Home Team'}</div>
+                    </div>
+                    ${heroData.home_team_stats ? `
+                    <div class="hero-team-stats">
+                        <div class="hero-team-stat">${heroData.home_team_stats.wins}-${heroData.home_team_stats.losses}</div>
+                        <div class="hero-team-stat">#${heroData.home_team_stats.rank} in ${heroData.home_team_stats.division || 'Conference'}</div>
+                        <div class="hero-team-stat">
+                            <span class="hero-stat-icon" onclick="event.stopPropagation(); showStandingsModal('${sportKey}')">📊 View Standings</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="hero-team-block">
+                    <div class="hero-team-header">
+                        ${awayTeam?.logo ? `<img src="${awayTeam.logo}" alt="${awayTeam.name}" class="hero-team-logo">` : ''}
+                        <div class="hero-team-name">${awayTeam?.name || 'Away Team'}</div>
+                    </div>
+                    ${heroData.away_team_stats ? `
+                    <div class="hero-team-stats">
+                        <div class="hero-team-stat">${heroData.away_team_stats.wins}-${heroData.away_team_stats.losses}</div>
+                        <div class="hero-team-stat">#${heroData.away_team_stats.rank} in ${heroData.away_team_stats.division || 'Conference'}</div>
+                        <div class="hero-team-stat">
+                            <span class="hero-stat-icon" onclick="event.stopPropagation(); showStandingsModal('${sportKey}')">📊 View Standings</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
         }
     }
     
@@ -353,52 +416,66 @@
         const isCompleted = event.is_completed || false;
         
         // Check if elements exist
-        const heroScore = document.getElementById('heroScore');
         const heroGameInfo = document.getElementById('heroGameInfo');
         const heroContentBoxes = document.getElementById('heroContentBoxes');
         const heroMeta = document.getElementById('heroMeta');
+        const heroTitle = document.getElementById('heroTitle');
+        const heroBadge = document.querySelector('.hero-badge');
         
         if (isCompleted) {
-            // Update score display
-            if (heroScore) {
-                const homeScore = event.goals?.home || 0;
-                const awayScore = event.goals?.away || 0;
-                heroScore.innerHTML = `
-                    <span class="hero-score-number ${homeScore > awayScore ? 'winner' : ''}">${homeScore}</span>
-                    <span class="hero-score-separator">-</span>
-                    <span class="hero-score-number ${awayScore > homeScore ? 'winner' : ''}">${awayScore}</span>
-                `;
+            // Hide title, game info bar, and sport badge for completed games
+            if (heroTitle) {
+                heroTitle.style.display = 'none';
             }
+            if (heroGameInfo) {
+                heroGameInfo.style.display = 'none';
+            }
+            if (heroBadge) {
+                heroBadge.style.display = 'none';
+            }
+            // Note: Score is now handled in updateTeamInfo as part of team-info-row-completed
             
-            // Update content boxes with recap and highlights
+            // Update content boxes with larger recap and highlights
             if (heroContentBoxes) {
+                const recapText = (heroData.recap || 'In a thrilling matchup that came down to the final minutes, the visiting team secured a hard-fought victory. The game featured multiple lead changes and clutch performances from both sides. Key plays in the fourth quarter proved decisive as the winning team pulled away with strong defensive stops and timely scoring.').replace(/'/g, "\\'");
+                const highlights = heroData.highlights || [
+                    {title: 'Opening tip-off and fast break', time: '1st Q - 11:45'},
+                    {title: 'Three-pointer to tie the game', time: '2nd Q - 6:23'},
+                    {title: 'Incredible defensive stop', time: '3rd Q - 8:12'},
+                    {title: 'Clutch basket in final minute', time: '4th Q - 0:47'},
+                    {title: 'Game-winning free throws', time: '4th Q - 0:03'},
+                    {title: 'Post-game celebration', time: 'Final'}
+                ];
+                
+                heroContentBoxes.className = 'hero-content-boxes-completed';
                 heroContentBoxes.innerHTML = `
-                    <div class="hero-content-box">
-                        <div class="hero-box-header" onclick="toggleContentBox(this)">
+                    <div class="hero-content-box-large">
+                        <div class="hero-box-header">
                             <div class="hero-box-header-left">
                                 <span class="hero-box-icon">📝</span>
                                 <span class="hero-box-title">Game Recap</span>
                             </div>
-                            <span class="hero-box-expand-icon">▼</span>
                         </div>
-                        <div class="hero-box-content">
-                            ${heroData.recap || 'Game recap coming soon...'}
+                        <div class="hero-box-content-large">
+                            ${recapText}
                         </div>
                     </div>
-                    <div class="hero-content-box">
-                        <div class="hero-box-header" onclick="toggleContentBox(this)">
+                    <div class="hero-content-box-large">
+                        <div class="hero-box-header">
                             <div class="hero-box-header-left">
                                 <span class="hero-box-icon">🎬</span>
-                                <span class="hero-box-title">Highlights</span>
+                                <span class="hero-box-title">Game Highlights</span>
                             </div>
-                            <span class="hero-box-expand-icon">▼</span>
                         </div>
-                        <div class="hero-box-content">
-                            <div class="hero-highlights-list">
-                                ${(heroData.highlights || []).map(h => `
-                                    <div class="hero-highlight-item">
-                                        <span class="hero-highlight-title">${h.title}</span>
-                                        <span class="hero-highlight-duration">${h.duration}</span>
+                        <div class="hero-box-content-large">
+                            <div class="hero-highlights-list-large">
+                                ${highlights.map(h => `
+                                    <div class="hero-highlight-item-large">
+                                        <span class="hero-highlight-icon">▶</span>
+                                        <div class="hero-highlight-content">
+                                            <span class="hero-highlight-title-large">${h.title}</span>
+                                            <span class="hero-highlight-time">${h.time}</span>
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -407,8 +484,17 @@
                 `;
             }
         } else {
-            // Update game info bar
+            // Show title, game info bar, and sport badge for upcoming games
+            if (heroTitle) {
+                heroTitle.style.display = 'block';
+            }
+            if (heroBadge) {
+                heroBadge.style.display = 'inline-block';
+            }
+            
+            // Show and update game info bar
             if (heroGameInfo) {
+                heroGameInfo.style.display = 'flex';
                 const formattedDate = formatGameDate(event.fixture?.date);
                 heroGameInfo.innerHTML = `
                     <div class="hero-info-item">
@@ -428,32 +514,34 @@
                 `;
             }
             
-            // Update content boxes with preview and team news
+            // Update content boxes with preview and team news (normal size)
             if (heroContentBoxes) {
+                const previewText = (heroData.preview || 'Game preview coming soon...').replace(/'/g, "\\'");
+                const newsText = (heroData.team_news || 'No recent news available.').replace(/'/g, "\\'");
+                const previewPreview = previewText.substring(0, 120) + (previewText.length > 120 ? '...' : '');
+                const newsPreview = newsText.substring(0, 120) + (newsText.length > 120 ? '...' : '');
+                
+                heroContentBoxes.className = 'hero-content-boxes';
                 heroContentBoxes.innerHTML = `
-                    <div class="hero-content-box">
-                        <div class="hero-box-header" onclick="toggleContentBox(this)">
+                    <div class="hero-content-box" onclick="openContentModal('Game Preview', '${previewText}')">
+                        <div class="hero-box-header">
                             <div class="hero-box-header-left">
                                 <span class="hero-box-icon">📰</span>
                                 <span class="hero-box-title">Game Preview</span>
                             </div>
-                            <span class="hero-box-expand-icon">▼</span>
+                            <span class="hero-box-expand-icon">→</span>
                         </div>
-                        <div class="hero-box-content">
-                            ${heroData.preview || 'Game preview coming soon...'}
-                        </div>
+                        <div class="hero-box-preview">${previewPreview}</div>
                     </div>
-                    <div class="hero-content-box">
-                        <div class="hero-box-header" onclick="toggleContentBox(this)">
+                    <div class="hero-content-box" onclick="openContentModal('Team News', '${newsText}')">
+                        <div class="hero-box-header">
                             <div class="hero-box-header-left">
                                 <span class="hero-box-icon">📰</span>
                                 <span class="hero-box-title">Team News</span>
                             </div>
-                            <span class="hero-box-expand-icon">▼</span>
+                            <span class="hero-box-expand-icon">→</span>
                         </div>
-                        <div class="hero-box-content">
-                            ${heroData.team_news || 'No recent news available.'}
-                        </div>
+                        <div class="hero-box-preview">${newsPreview}</div>
                     </div>
                 `;
             }
@@ -1020,15 +1108,36 @@
 // Global helper functions for onclick handlers
 
 /**
- * Toggle content box expand/collapse
+ * Open content modal with title and content
  */
-function toggleContentBox(headerElement) {
-    const contentBox = headerElement.closest('.hero-content-box');
-    const content = contentBox.querySelector('.hero-box-content');
-    const expandIcon = headerElement.querySelector('.hero-box-expand-icon');
+function openContentModal(title, content) {
+    const modal = document.getElementById('contentModal');
+    const modalTitle = document.getElementById('contentModalTitle');
+    const modalBody = document.getElementById('contentModalBody');
     
-    content.classList.toggle('collapsed');
-    expandIcon.classList.toggle('expanded');
+    if (!modal || !modalTitle || !modalBody) return;
+    
+    modalTitle.textContent = title;
+    modalBody.textContent = content;
+    modal.classList.add('active');
+}
+
+/**
+ * Close content modal
+ */
+function closeContentModal() {
+    const modal = document.getElementById('contentModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+/**
+ * Open highlights modal (special handling for list format)
+ */
+function openHighlightsModal() {
+    // This will be populated dynamically from hero data
+    openContentModal('Highlights', 'Highlights coming soon...');
 }
 
 /**
@@ -1061,14 +1170,18 @@ function showStandingsModal(sportKey) {
         
         // Group teams by division
         const divisions = {};
-        if (data.league && data.league.standings && data.league.standings.length > 0) {
-            data.league.standings[0].forEach(team => {
-                const divisionName = team.division || 'Conference';
-                if (!divisions[divisionName]) {
-                    divisions[divisionName] = [];
-                }
-                divisions[divisionName].push(team);
-            });
+        // Data is an array with one element containing the league object
+        if (Array.isArray(data) && data.length > 0) {
+            const leagueData = data[0];
+            if (leagueData.league && leagueData.league.standings && leagueData.league.standings.length > 0) {
+                leagueData.league.standings[0].forEach(team => {
+                    const divisionName = team.division || 'Conference';
+                    if (!divisions[divisionName]) {
+                        divisions[divisionName] = [];
+                    }
+                    divisions[divisionName].push(team);
+                });
+            }
         }
         
         // Render divisions
@@ -1128,10 +1241,16 @@ function closeStandingsModal() {
     }
 }
 
-// Close modal when clicking outside
+// Close modals when clicking outside
 document.addEventListener('click', function(e) {
-    const modal = document.getElementById('standingsModal');
-    if (modal && e.target === modal) {
+    const standingsModal = document.getElementById('standingsModal');
+    const contentModal = document.getElementById('contentModal');
+    
+    if (standingsModal && e.target === standingsModal) {
         closeStandingsModal();
+    }
+    
+    if (contentModal && e.target === contentModal) {
+        closeContentModal();
     }
 });

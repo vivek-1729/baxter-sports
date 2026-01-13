@@ -4,7 +4,7 @@ Handles user preferences for sports and favorite teams/players
 """
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
-from hybrid_data import get_live_data, get_upcoming_data, get_recent_data, get_standings_data, get_news_data, get_stats_data, get_sport_games
+from hybrid_data import get_live_data, get_upcoming_data, get_recent_data, get_timeline_data, get_standings_data, get_news_data, get_stats_data, get_sport_games
 from dummy_data import get_dummy_play_by_play, get_sport_news, get_sport_standings, get_sport_stats
 from image_resolver import get_image_resolver
 from preferences_storage import get_preferences_storage
@@ -13,6 +13,23 @@ from user_auth import register_user, authenticate_user, get_user_by_id
 from smart_cache import prime_cache, CACHE_DURATIONS
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+
+# Import safe date parser
+try:
+    from api_adapter import parse_datetime_safe
+except ImportError:
+    # Fallback if api_adapter not available
+    def parse_datetime_safe(date_str: str) -> datetime:
+        try:
+            if 'T' in date_str:
+                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            else:
+                dt = datetime.strptime(date_str, '%Y-%m-%d')
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except:
+            return datetime.now(timezone.utc)
 import os
 import uuid
 import hybrid_data
@@ -85,12 +102,14 @@ def get_game_recap(home_team, away_team, home_score, away_score):
     return random.choice(recaps)
 
 def get_game_highlights():
-    """Generate dummy highlight items"""
+    """Generate dummy highlight items with timestamps"""
     highlights = [
-        {"title": "4th Quarter Comeback", "duration": "2:47"},
-        {"title": "Game-Winning Drive", "duration": "3:12"},
-        {"title": "Top Plays of the Game", "duration": "5:34"},
-        {"title": "Post-Game Interviews", "duration": "4:21"}
+        {"title": "Opening tip-off and fast break", "time": "1st Q - 11:45"},
+        {"title": "Three-pointer to tie the game", "time": "2nd Q - 6:23"},
+        {"title": "Incredible defensive stop", "time": "3rd Q - 8:12"},
+        {"title": "Clutch basket in final minute", "time": "4th Q - 0:47"},
+        {"title": "Game-winning free throws", "time": "4th Q - 0:03"},
+        {"title": "Post-game celebration", "time": "Final"}
     ]
     return highlights
 
@@ -299,80 +318,56 @@ def live_games():
     username = session.get('username', '')
     
     # Build timeline with real API data (with dummy fallback)
-    timeline_events = []
+    # SIMPLE LAYOUT: First row = upcoming, Second row = past
     live_events = get_live_data()
-    upcoming_fixtures = get_upcoming_data()
-    recent_results = get_recent_data()
+    # Use smart timeline data that re-categorizes games based on current time
+    upcoming_fixtures, recent_results = get_timeline_data()
     
-    # Process all events
+    # Helper function to get event date
+    def get_event_date(event):
+        try:
+            date_str = event.get('fixture', {}).get('date', '')
+            if date_str:
+                return parse_datetime_safe(date_str)
+            return datetime.now(timezone.utc)
+        except:
+            return datetime.now(timezone.utc)
+    
+    # FIRST ROW: Live + Upcoming games (sorted by date, soonest first)
+    first_row_events = []
     for sport_key in selected_sports:
+        # Add live events
         if sport_key in live_events:
             for event in live_events[sport_key]:
                 event['sport_key'] = sport_key
                 event['is_live'] = True
-                timeline_events.append(event)
+                first_row_events.append(event)
         
+        # Add upcoming events
         if sport_key in upcoming_fixtures:
             for event in upcoming_fixtures[sport_key]:
                 event['sport_key'] = sport_key
                 event['is_live'] = False
-                timeline_events.append(event)
-        
+                first_row_events.append(event)
+    
+    # Sort first row: Live first, then by date (soonest first)
+    first_row_events.sort(key=lambda e: (0 if e.get('is_live') else 1, get_event_date(e)))
+    
+    # SECOND ROW: Recent/Past games (sorted by date, most recent first)
+    second_row_events = []
+    for sport_key in selected_sports:
         if sport_key in recent_results:
             for event in recent_results[sport_key]:
                 event['sport_key'] = sport_key
                 event['is_live'] = False
                 event['is_completed'] = True
-                timeline_events.append(event)
+                second_row_events.append(event)
     
-    # Sort events intelligently
-    def get_event_date(event):
-        try:
-            date_str = event.get('fixture', {}).get('date', '')
-            if date_str:
-                if 'T' in date_str:
-                    # Handle UTC timezone
-                    return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                else:
-                    return datetime.strptime(date_str, '%Y-%m-%d')
-            return datetime.now()
-        except:
-            return datetime.now()
+    # Sort second row: Most recent games first
+    second_row_events.sort(key=lambda e: get_event_date(e), reverse=True)
     
-    # Sort: Live first, then upcoming (next 3 days), then recent (past)
-    # Use UTC time for comparison since API dates are in UTC
-    from datetime import timezone
-    now = datetime.now(timezone.utc)
-    three_days_from_now = now + timedelta(days=3)
-    
-    def get_sort_key(event):
-        event_date = get_event_date(event)
-        
-        # Make event_date timezone-aware if it's naive
-        if event_date.tzinfo is None:
-            event_date = event_date.replace(tzinfo=timezone.utc)
-        
-        # Priority 0: Live events (most important)
-        if event.get('is_live'):
-            return (0, event_date)
-        
-        # Priority 1: Completed/past events should be at the END
-        # Check is_completed flag first, then date
-        elif event.get('is_completed') or event_date < now:
-            return (3, -event_date.timestamp())  # Priority 3, most recent first
-        
-        # Priority 2: Upcoming events in next 3 days (sorted by date, soonest first)
-        elif event_date > now and event_date <= three_days_from_now:
-            return (1, event_date)
-        
-        # Priority 3: Future events beyond 3 days
-        else:
-            return (2, event_date)
-    
-    timeline_events.sort(key=get_sort_key)
-    
-    first_row_events = timeline_events[:8]
-    second_row_events = timeline_events[8:]
+    # Combine for template (first event from first row used for hero)
+    timeline_events = first_row_events + second_row_events
     
     # Resolve images
     image_resolver = get_image_resolver()
@@ -659,33 +654,50 @@ def dashboard():
     if not selected_sports:
         return redirect(url_for('select_sports_page'))
     
-    # Build timeline: Live → Upcoming → Recent
-    timeline_events = []
-    
+    # Build timeline with SIMPLE LAYOUT: First row = upcoming, Second row = past
     # Get real API data (with dummy fallback)
     live_events = get_live_data()
-    upcoming_fixtures = get_upcoming_data()
-    recent_results = get_recent_data()
+    # Use smart timeline data that re-categorizes games based on current time
+    upcoming_fixtures, recent_results = get_timeline_data()
     
-    # Process live events
+    # Helper function to get event date
+    def get_event_date(event):
+        try:
+            date_str = event.get('fixture', {}).get('date', '')
+            if date_str:
+                return parse_datetime_safe(date_str)
+            return datetime.now(timezone.utc)
+        except:
+            return datetime.now(timezone.utc)
+    
+    # FIRST ROW: Live + Upcoming games (favorites first, then by date)
+    first_row_events = []
     for sport_key in selected_sports:
+        # Add live events
         if sport_key in live_events:
             for event in live_events[sport_key]:
                 event['sport_key'] = sport_key
                 event['is_live'] = True
                 event['is_favorite'] = _is_favorite_event(event, sport_key, favorites)
-                timeline_events.append(event)
-    
-    # Process upcoming fixtures
-    for sport_key in selected_sports:
+                first_row_events.append(event)
+        
+        # Add upcoming events
         if sport_key in upcoming_fixtures:
             for event in upcoming_fixtures[sport_key]:
                 event['sport_key'] = sport_key
                 event['is_live'] = False
                 event['is_favorite'] = _is_favorite_event(event, sport_key, favorites)
-                timeline_events.append(event)
+                first_row_events.append(event)
     
-    # Process recent results
+    # Sort first row: Live first, then favorites, then by date (soonest first)
+    first_row_events.sort(key=lambda e: (
+        0 if e.get('is_live') else 1,
+        0 if e.get('is_favorite') else 1,
+        get_event_date(e)
+    ))
+    
+    # SECOND ROW: Recent/Past games (favorites first, then most recent)
+    second_row_events = []
     for sport_key in selected_sports:
         if sport_key in recent_results:
             for event in recent_results[sport_key]:
@@ -693,79 +705,16 @@ def dashboard():
                 event['is_live'] = False
                 event['is_completed'] = True
                 event['is_favorite'] = _is_favorite_event(event, sport_key, favorites)
-                timeline_events.append(event)
+                second_row_events.append(event)
     
-    # Categorize events with favorite-first prioritization
-    def get_event_date(event):
-        try:
-            date_str = event.get('fixture', {}).get('date', '')
-            if date_str:
-                # Handle various date formats
-                if 'T' in date_str:
-                    # Handle UTC timezone
-                    return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                else:
-                    return datetime.strptime(date_str, '%Y-%m-%d')
-            return datetime.now()
-        except:
-            return datetime.now()
+    # Sort second row: Favorites first, then most recent
+    second_row_events.sort(key=lambda e: (
+        0 if e.get('is_favorite') else 1,
+        -get_event_date(e).timestamp()
+    ))
     
-    # Use UTC time for comparison since API dates are in UTC
-    now = datetime.now(timezone.utc)
-    three_days_from_now = now + timedelta(days=3)
-    three_days_ago = now - timedelta(days=3)
-    
-    # Categorize events into priority buckets
-    live_fav = []
-    upcoming_fav = []
-    recent_fav = []
-    live_non_fav = []
-    upcoming_non_fav = []
-    
-    for event in timeline_events:
-        event_date = get_event_date(event)
-        if event_date.tzinfo is None:
-            event_date = event_date.replace(tzinfo=timezone.utc)
-        
-        is_fav = event.get('is_favorite', False)
-        is_live = event.get('is_live', False)
-        is_completed = event.get('is_completed', False) or event_date < now
-        
-        # Categorize based on status and favorite flag
-        if is_live and is_fav:
-            live_fav.append((event, event_date))
-        elif is_live and not is_fav:
-            live_non_fav.append((event, event_date))
-        elif not is_completed and event_date <= three_days_from_now and is_fav:
-            # Upcoming favorite (next 3 days)
-            upcoming_fav.append((event, event_date))
-        elif is_completed and event_date >= three_days_ago and is_fav:
-            # Recent favorite (last 3 days)
-            recent_fav.append((event, event_date))
-        elif not is_completed and event_date <= three_days_from_now and not is_fav:
-            # Upcoming non-favorite (next 3 days) - only if space
-            upcoming_non_fav.append((event, event_date))
-        # Everything else is filtered out (non-fav past, non-fav far future)
-    
-    # Sort within each bucket
-    live_fav.sort(key=lambda x: x[1])
-    live_non_fav.sort(key=lambda x: x[1])
-    upcoming_fav.sort(key=lambda x: x[1])
-    upcoming_non_fav.sort(key=lambda x: x[1])
-    recent_fav.sort(key=lambda x: -x[1].timestamp())  # Most recent first
-    
-    # Combine in priority order: Favorites first, then non-favorites
-    timeline_events = (
-        [e for e, _ in live_fav] +
-        [e for e, _ in upcoming_fav] +
-        [e for e, _ in recent_fav] +
-        [e for e, _ in live_non_fav] +
-        [e for e, _ in upcoming_non_fav]
-    )
-    
-    # Split events into two rows: first row (viewport) and second row (below)
-    first_row_events = timeline_events[:8]  # First 8 events in viewport
-    second_row_events = timeline_events[8:]  # Remaining events below viewport
+    # Combine for hero data selection (first event from either row)
+    timeline_events = first_row_events + second_row_events
     
     # Resolve images for events (async, non-blocking)
     image_resolver = get_image_resolver()
@@ -811,6 +760,20 @@ def dashboard():
             # Add additional hero data
             hero_data['game_time'] = get_game_time_with_timezone(first_event.get('fixture', {}).get('date', ''))
             hero_data['network'] = get_broadcast_network(sport_key)
+    
+    # Get both teams' stats for display
+    home_team_stats = None
+    away_team_stats = None
+    if timeline_events:
+        first_event = timeline_events[0]
+        home_team = first_event.get('teams', {}).get('home', {}).get('name')
+        away_team = first_event.get('teams', {}).get('away', {}).get('name')
+        sport_key = first_event.get('sport_key')
+        
+        if home_team and sport_key:
+            home_team_stats = get_stats_data(home_team, sport_key)
+        if away_team and sport_key:
+            away_team_stats = get_stats_data(away_team, sport_key)
             
             if first_event.get('is_completed'):
                 # Completed game - add recap and highlights
@@ -848,6 +811,8 @@ def dashboard():
                          first_row_events=first_row_events,
                          second_row_events=second_row_events,
                          hero_data=hero_data,
+                         home_team_stats=home_team_stats,
+                         away_team_stats=away_team_stats,
                          modal_data=modal_data,
                          get_abbrev=get_abbrev,
                          username=username,

@@ -51,21 +51,108 @@
                     {% if timeline_events %}
                     {% set first_event = timeline_events[0] %}
                     <div class="hero-main">
-                        <div class="hero-badges">
-                            <div class="hero-badge">{{ sports[first_event.sport_key].name }}</div>
-                            {% if first_event.get('is_completed') %}
-                            <div class="hero-final-badge">FINAL</div>
-                            {% elif first_event.get('is_live') %}
-                            <div class="hero-live-badge">LIVE</div>
-                            {% endif %}
-                        </div>
                         
                         {# Matchup Title #}
-                        <h1 class="hero-title" id="heroTitle">
-                            {{ first_event.teams.home.name }} vs {{ first_event.teams.away.name }}
-                        </h1>
+                        {% if first_event.get('is_completed') and first_event.goals.home is not none and first_event.goals.away is not none %}
+                        {# ==== COMPLETED GAME LAYOUT ==== #}
                         
-                        {# Team Info Row with Logos, Names, Records and Standings #}
+                        {# Team Info Row with Score in Middle #}
+                        <div class="hero-team-info-row-completed" id="heroTeamInfo">
+                            <div class="hero-team-block">
+                                <div class="hero-team-header">
+                                    {% if first_event.teams.home.logo %}
+                                    <img src="{{ first_event.teams.home.logo }}" alt="{{ first_event.teams.home.name }}" class="hero-team-logo">
+                                    {% endif %}
+                                    <div class="hero-team-name">{{ first_event.teams.home.name }}</div>
+                                </div>
+                                {% if home_team_stats %}
+                                <div class="hero-team-stats">
+                                    <div class="hero-team-stat">{{ home_team_stats.wins }}-{{ home_team_stats.losses }}</div>
+                                    <div class="hero-team-stat">#{{ home_team_stats.rank }} in {{ home_team_stats.division }}</div>
+                                    <div class="hero-team-stat">
+                                        <span class="hero-stat-icon" onclick="event.stopPropagation(); showStandingsModal('{{ first_event.sport_key }}')">📊 View Standings</span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            {# Score in Middle #}
+                            <div class="hero-score-middle" id="heroScore">
+                                <div class="hero-score-display-small">
+                                    <span class="hero-score-number-small {% if first_event.goals.home > first_event.goals.away %}winner{% endif %}">{{ first_event.goals.home }}</span>
+                                    <span class="hero-score-separator-small">-</span>
+                                    <span class="hero-score-number-small {% if first_event.goals.away > first_event.goals.home %}winner{% endif %}">{{ first_event.goals.away }}</span>
+                                </div>
+                                <span class="hero-score-final-badge-small">FINAL</span>
+                            </div>
+                            
+                            <div class="hero-team-block">
+                                <div class="hero-team-header">
+                                    {% if first_event.teams.away.logo %}
+                                    <img src="{{ first_event.teams.away.logo }}" alt="{{ first_event.teams.away.name }}" class="hero-team-logo">
+                                    {% endif %}
+                                    <div class="hero-team-name">{{ first_event.teams.away.name }}</div>
+                                </div>
+                                {% if away_team_stats %}
+                                <div class="hero-team-stats">
+                                    <div class="hero-team-stat">{{ away_team_stats.wins }}-{{ away_team_stats.losses }}</div>
+                                    <div class="hero-team-stat">#{{ away_team_stats.rank }} in {{ away_team_stats.division }}</div>
+                                    <div class="hero-team-stat">
+                                        <span class="hero-stat-icon" onclick="event.stopPropagation(); showStandingsModal('{{ first_event.sport_key }}')">📊 View Standings</span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {# Recap and Highlights Boxes - Bigger & Scrollable #}
+                        <div class="hero-content-boxes-completed" id="heroContentBoxes">
+                            <div class="hero-content-box-large">
+                                <div class="hero-box-header">
+                                    <div class="hero-box-header-left">
+                                        <span class="hero-box-icon">📝</span>
+                                        <span class="hero-box-title">Game Recap</span>
+                                    </div>
+                                </div>
+                                <div class="hero-box-content-large">
+                                    {{ hero_data.get('recap', 'In a thrilling matchup that came down to the final minutes, the visiting team secured a hard-fought victory. The game featured multiple lead changes and clutch performances from both sides. Key plays in the fourth quarter proved decisive as the winning team pulled away with strong defensive stops and timely scoring. The atmosphere was electric as fans witnessed an instant classic that will be remembered for years to come.') }}
+                                </div>
+                            </div>
+                            <div class="hero-content-box-large">
+                                <div class="hero-box-header">
+                                    <div class="hero-box-header-left">
+                                        <span class="hero-box-icon">🎬</span>
+                                        <span class="hero-box-title">Game Highlights</span>
+                                    </div>
+                                </div>
+                                <div class="hero-box-content-large">
+                                    <div class="hero-highlights-list-large">
+                                        {% for highlight in hero_data.get('highlights', [
+                                            {'title': 'Opening tip-off and fast break', 'time': '1st Q - 11:45'},
+                                            {'title': 'Three-pointer to tie the game', 'time': '2nd Q - 6:23'},
+                                            {'title': 'Incredible defensive stop', 'time': '3rd Q - 8:12'},
+                                            {'title': 'Clutch basket in final minute', 'time': '4th Q - 0:47'},
+                                            {'title': 'Game-winning free throws', 'time': '4th Q - 0:03'},
+                                            {'title': 'Post-game celebration', 'time': 'Final'}
+                                        ]) %}
+                                        <div class="hero-highlight-item-large">
+                                            <span class="hero-highlight-icon">▶</span>
+                                            <div class="hero-highlight-content">
+                                                <span class="hero-highlight-title-large">{{ highlight.title }}</span>
+                                                <span class="hero-highlight-time">{{ highlight.time }}</span>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% else %}
+                        {# ==== UPCOMING/LIVE GAME LAYOUT ==== #}
+                        
+                        
+                        {# Team Info Row #}
                         <div class="hero-team-info-row" id="heroTeamInfo">
                             <div class="hero-team-block">
                                 <div class="hero-team-header">
@@ -76,13 +163,10 @@
                                 </div>
                                 {% if home_team_stats %}
                                 <div class="hero-team-stats">
+                                    <div class="hero-team-stat">{{ home_team_stats.wins }}-{{ home_team_stats.losses }}</div>
+                                    <div class="hero-team-stat">#{{ home_team_stats.rank }} in {{ home_team_stats.division }}</div>
                                     <div class="hero-team-stat">
-                                        <span>{{ home_team_stats.wins }}-{{ home_team_stats.losses }}</span>
-                                        <span class="hero-stat-icon" onclick="showStandingsModal('{{ first_event.sport_key }}')">📊</span>
-                                    </div>
-                                    <div class="hero-team-stat">
-                                        <span>#{{ home_team_stats.rank }} in {{ home_team_stats.division }}</span>
-                                        <span class="hero-stat-icon" onclick="showStandingsModal('{{ first_event.sport_key }}')">📈</span>
+                                        <span class="hero-stat-icon" onclick="event.stopPropagation(); showStandingsModal('{{ first_event.sport_key }}')">📊 View Standings</span>
                                     </div>
                                 </div>
                                 {% endif %}
@@ -96,71 +180,15 @@
                                 </div>
                                 {% if away_team_stats %}
                                 <div class="hero-team-stats">
+                                    <div class="hero-team-stat">{{ away_team_stats.wins }}-{{ away_team_stats.losses }}</div>
+                                    <div class="hero-team-stat">#{{ away_team_stats.rank }} in {{ away_team_stats.division }}</div>
                                     <div class="hero-team-stat">
-                                        <span>{{ away_team_stats.wins }}-{{ away_team_stats.losses }}</span>
-                                        <span class="hero-stat-icon" onclick="showStandingsModal('{{ first_event.sport_key }}')">📊</span>
-                                    </div>
-                                    <div class="hero-team-stat">
-                                        <span>#{{ away_team_stats.rank }} in {{ away_team_stats.division }}</span>
-                                        <span class="hero-stat-icon" onclick="showStandingsModal('{{ first_event.sport_key }}')">📈</span>
+                                        <span class="hero-stat-icon" onclick="event.stopPropagation(); showStandingsModal('{{ first_event.sport_key }}')">📊 View Standings</span>
                                     </div>
                                 </div>
                                 {% endif %}
                             </div>
                         </div>
-                        
-                        {% if first_event.get('is_completed') and first_event.goals.home is not none and first_event.goals.away is not none %}
-                        {# ==== COMPLETED GAME LAYOUT ==== #}
-                        
-                        {# Huge Centered Score #}
-                        <div class="hero-score-large" id="heroScore">
-                            <span class="hero-score-number {% if first_event.goals.home > first_event.goals.away %}winner{% endif %}">{{ first_event.goals.home }}</span>
-                            <span class="hero-score-separator">-</span>
-                            <span class="hero-score-number {% if first_event.goals.away > first_event.goals.home %}winner{% endif %}">{{ first_event.goals.away }}</span>
-                        </div>
-                        
-                        {# Game Date #}
-                        <div class="hero-meta" id="heroMeta">
-                            <span class="hero-date">{{ first_event.fixture.date[:10] }}</span>
-                        </div>
-                        
-                        {# Recap and Highlights Boxes #}
-                        <div class="hero-content-boxes" id="heroContentBoxes">
-                            <div class="hero-content-box">
-                                <div class="hero-box-header" onclick="toggleContentBox(this)">
-                                    <div class="hero-box-header-left">
-                                        <span class="hero-box-icon">📝</span>
-                                        <span class="hero-box-title">Game Recap</span>
-                                    </div>
-                                    <span class="hero-box-expand-icon">▼</span>
-                                </div>
-                                <div class="hero-box-content">
-                                    {{ hero_data.get('recap', 'Game recap coming soon...') }}
-                                </div>
-                            </div>
-                            <div class="hero-content-box">
-                                <div class="hero-box-header" onclick="toggleContentBox(this)">
-                                    <div class="hero-box-header-left">
-                                        <span class="hero-box-icon">🎬</span>
-                                        <span class="hero-box-title">Highlights</span>
-                                    </div>
-                                    <span class="hero-box-expand-icon">▼</span>
-                                </div>
-                                <div class="hero-box-content">
-                                    <div class="hero-highlights-list">
-                                        {% for highlight in hero_data.get('highlights', []) %}
-                                        <div class="hero-highlight-item">
-                                            <span class="hero-highlight-title">{{ highlight.title }}</span>
-                                            <span class="hero-highlight-duration">{{ highlight.duration }}</span>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {% else %}
-                        {# ==== UPCOMING/LIVE GAME LAYOUT ==== #}
                         
                         {# Game Info Bar #}
                         <div class="hero-game-info-bar" id="heroGameInfo">
@@ -182,28 +210,28 @@
                         
                         {# Preview and Team News Boxes #}
                         <div class="hero-content-boxes" id="heroContentBoxes">
-                            <div class="hero-content-box">
-                                <div class="hero-box-header" onclick="toggleContentBox(this)">
+                            <div class="hero-content-box" onclick="openContentModal('Game Preview', '{{ hero_data.get('preview', 'Game preview coming soon...') | replace("'", "\\'") }}')">
+                                <div class="hero-box-header">
                                     <div class="hero-box-header-left">
                                         <span class="hero-box-icon">📰</span>
                                         <span class="hero-box-title">Game Preview</span>
                                     </div>
-                                    <span class="hero-box-expand-icon">▼</span>
+                                    <span class="hero-box-expand-icon">→</span>
                                 </div>
-                                <div class="hero-box-content">
-                                    {{ hero_data.get('preview', 'Game preview coming soon...') }}
+                                <div class="hero-box-preview">
+                                    {{ hero_data.get('preview', 'Game preview coming soon...')[:120] }}{% if hero_data.get('preview', '')|length > 120 %}...{% endif %}
                                 </div>
                             </div>
-                            <div class="hero-content-box">
-                                <div class="hero-box-header" onclick="toggleContentBox(this)">
+                            <div class="hero-content-box" onclick="openContentModal('Team News', '{{ hero_data.get('team_news', 'No recent news available.') | replace("'", "\\'") }}')">
+                                <div class="hero-box-header">
                                     <div class="hero-box-header-left">
                                         <span class="hero-box-icon">📰</span>
                                         <span class="hero-box-title">Team News</span>
                                     </div>
-                                    <span class="hero-box-expand-icon">▼</span>
+                                    <span class="hero-box-expand-icon">→</span>
                                 </div>
-                                <div class="hero-box-content">
-                                    {{ hero_data.get('team_news', 'No recent news available.') }}
+                                <div class="hero-box-preview">
+                                    {{ hero_data.get('team_news', 'No recent news available.')[:120] }}{% if hero_data.get('team_news', '')|length > 120 %}...{% endif %}
                                 </div>
                             </div>
                         </div>
@@ -249,8 +277,6 @@
                      </div>
                      
                      <div class="small-card-content">
-                         <div class="card-sport-label">{{ sports[event.sport_key].name }}</div>
-                         
                          {% if event.teams.home.name and event.teams.away.name %}
                          <div class="card-matchup">
                              <div class="card-team {% if event.get('is_favorite') and favorites.get(event.sport_key, '').lower() in event.teams.home.name.lower() %}highlighted{% endif %}">
@@ -275,9 +301,8 @@
                              {% if event.get('is_live') %}
                              <span>{{ event.fixture.status.elapsed }}'</span>
                              <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
-                             {% elif event.get('is_completed') %}
-                             <span>Final</span>
-                             <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
+                            {% elif event.get('is_completed') %}
+                            <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
                              {% else %}
                              <span>{{ event.fixture.date[:10] }}</span>
                              {% endif %}
@@ -319,8 +344,6 @@
                       </div>
                       
                       <div class="small-card-content">
-                          <div class="card-sport-label">{{ sports[event.sport_key].name }}</div>
-                          
                           {% if event.teams.home.name and event.teams.away.name %}
                           <div class="card-matchup">
                               <div class="card-team-abbrev {% if event.get('is_favorite') and favorites.get(event.sport_key, '').lower() in event.teams.home.name.lower() %}highlighted{% endif %}">
@@ -339,9 +362,8 @@
                               {% if event.get('is_live') %}
                               <span>{{ event.fixture.status.elapsed }}'</span>
                               <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
-                              {% elif event.get('is_completed') %}
-                              <span>Final</span>
-                              <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
+                            {% elif event.get('is_completed') %}
+                            <span>{{ event.goals.home }} - {{ event.goals.away }}</span>
                               {% else %}
                               <span>{{ event.fixture.date[:10] }}</span>
                               {% endif %}
@@ -385,6 +407,19 @@
             </div>
             <div class="standings-divisions" id="standingsDivisions">
                 <!-- Standings will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Content Modal (for previews, recaps, news) -->
+    <div class="standings-modal" id="contentModal">
+        <div class="standings-modal-content">
+            <div class="standings-modal-header">
+                <h2 class="standings-modal-title" id="contentModalTitle">Content</h2>
+                <span class="standings-modal-close" onclick="closeContentModal()">✕</span>
+            </div>
+            <div class="content-modal-body" id="contentModalBody">
+                <!-- Content will be dynamically loaded here -->
             </div>
         </div>
     </div>

@@ -319,6 +319,235 @@ def get_standings(sport):
 # MAIN DEMO
 # ======================
 
+# ======================
+# NEW SPORTS
+# ======================
+
+# ==========================================
+# CRICKET (ICC iCalendar + Cricsheet)
+# ==========================================
+
+def get_cricket_fixtures(team_filter=None):
+    """Get upcoming cricket matches from ICC iCalendar feed"""
+    try:
+        from icalendar import Calendar
+        from datetime import datetime as dt
+        
+        ical_url = "https://ics.ecal.com/ecal-sub/6965fee2b0ce3d0002b9d47f/ICC%20Cricket.ics"
+        r = requests.get(ical_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        r.raise_for_status()
+        
+        cal = Calendar.from_ical(r.text)
+        matches = []
+        now = dt.now()
+        
+        for component in cal.walk():
+            if component.name == "VEVENT":
+                summary = str(component.get('summary', ''))
+                if team_filter and team_filter not in summary:
+                    continue
+                
+                dtstart = component.get('dtstart')
+                location = str(component.get('location', ''))
+                description = str(component.get('description', ''))
+                start_dt = dtstart.dt if dtstart else None
+                
+                if start_dt and hasattr(start_dt, 'replace'):
+                    if start_dt.tzinfo is None:
+                        from datetime import timezone
+                        start_dt = start_dt.replace(tzinfo=timezone.utc)
+                    
+                    if start_dt > now.replace(tzinfo=start_dt.tzinfo):
+                        teams = []
+                        summary_clean = summary.replace('🏏 ', '').strip()
+                        if ':' in summary_clean:
+                            match_part = summary_clean.split(':', 1)[1].strip()
+                            if ' v ' in match_part:
+                                teams = [t.strip() for t in match_part.split(' v ')]
+                            elif ' vs ' in match_part:
+                                teams = [t.strip() for t in match_part.split(' vs ')]
+                        
+                        match_type = ""
+                        if "T20 International" in description:
+                            match_type = "T20I"
+                        elif "One-Day International" in description or "ODI" in description:
+                            match_type = "ODI"
+                        elif "Test" in description:
+                            match_type = "Test"
+                        
+                        matches.append({
+                            "match": f"{teams[0]} vs {teams[1]}" if len(teams) == 2 else summary_clean,
+                            "teams": teams,
+                            "venue": location.replace('\\,', ','),
+                            "date": start_dt.strftime('%Y-%m-%d'),
+                            "start_time": start_dt.isoformat(),
+                            "match_type": match_type,
+                            "status": "Upcoming",
+                            "source": "ical"
+                        })
+        return matches
+    except Exception as e:
+        print(f"Error fetching cricket fixtures: {e}")
+        return []
+
+
+def get_cricket_results(days=7, team_filter=None):
+    """Get recent cricket results from Cricsheet"""
+    import zipfile, io, json
+    
+    try:
+        cricsheet_url = f"https://cricsheet.org/downloads/recently_played_{days}_json.zip"
+        r = requests.get(cricsheet_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
+        r.raise_for_status()
+        
+        matches = []
+        with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+            json_files = [f for f in z.namelist() if f.endswith('.json')]
+            
+            for filename in json_files[:50]:
+                try:
+                    with z.open(filename) as f:
+                        match_data = json.load(f)
+                        info = match_data.get('info', {})
+                        teams = info.get('teams', [])
+                        
+                        if team_filter and not any(team_filter in team for team in teams):
+                            continue
+                        
+                        outcome = info.get('outcome', {})
+                        winner = outcome.get('winner', '')
+                        by_info = outcome.get('by', {})
+                        
+                        result_str = ""
+                        if winner:
+                            if 'runs' in by_info:
+                                result_str = f"{winner} won by {by_info['runs']} runs"
+                            elif 'wickets' in by_info:
+                                result_str = f"{winner} won by {by_info['wickets']} wickets"
+                            else:
+                                result_str = f"{winner} won"
+                        
+                        innings = match_data.get('innings', [])
+                        scores = {}
+                        for inning in innings:
+                            team = inning.get('team', '')
+                            overs = inning.get('overs', [])
+                            total_runs = total_wickets = 0
+                            for over in overs:
+                                for delivery in over.get('deliveries', []):
+                                    total_runs += delivery.get('runs', {}).get('total', 0)
+                                    if 'wickets' in delivery:
+                                        total_wickets += len(delivery['wickets'])
+                            scores[team] = f"{total_runs}/{total_wickets}"
+                        
+                        matches.append({
+                            "match": f"{teams[0]} vs {teams[1]}" if len(teams) == 2 else "Unknown",
+                            "teams": teams,
+                            "status": "Complete",
+                            "result": result_str,
+                            "winner": winner,
+                            "scores": scores,
+                            "match_type": info.get('match_type', '').upper(),
+                            "venue": info.get('venue', ''),
+                            "date": info.get('dates', [''])[0],
+                            "source": "cricsheet"
+                        })
+                except:
+                    continue
+        return matches
+    except Exception as e:
+        print(f"Error fetching cricket results: {e}")
+        return []
+
+
+# ==========================================
+# TENNIS (ESPN API)
+# ==========================================
+
+def get_tennis_matches(tour="atp"):
+    """Get tennis matches from ESPN (ATP or WTA)"""
+    url = f"{ESPN_BASE}/tennis/{tour}/scoreboard"
+    return fetch_json(url)
+
+
+def get_tennis_rankings(tour="atp"):
+    """Get tennis rankings from ESPN"""
+    url = f"{ESPN_BASE}/tennis/{tour}/rankings"
+    return fetch_json(url)
+
+
+# ==========================================
+# GOLF (ESPN API)
+# ==========================================
+
+def get_golf_tournament():
+    """Get current golf tournament from ESPN PGA"""
+    url = f"{ESPN_BASE}/golf/pga/scoreboard"
+    return fetch_json(url)
+
+
+# ==========================================
+# FORMULA 1 (FastF1)
+# ==========================================
+
+def get_f1_schedule(season="current"):
+    """Get F1 season schedule using FastF1"""
+    try:
+        import fastf1
+        from datetime import datetime as dt
+        
+        if season == "current":
+            season = dt.now().year
+        
+        schedule = fastf1.get_event_schedule(season)
+        races = []
+        
+        for idx, event in schedule.iterrows():
+            races.append({
+                "round": event["RoundNumber"],
+                "race_name": event["EventName"],
+                "country": event["Country"],
+                "location": event["Location"],
+                "date": event["EventDate"].strftime("%Y-%m-%d") if hasattr(event["EventDate"], 'strftime') else str(event["EventDate"]),
+                "circuit": event["Location"],
+                "season": season
+            })
+        return races
+    except Exception as e:
+        print(f"Error fetching F1 schedule: {e}")
+        return []
+
+
+def get_f1_next_race():
+    """Get next upcoming F1 race"""
+    try:
+        import fastf1
+        from datetime import datetime as dt
+        
+        schedule = fastf1.get_event_schedule(dt.now().year)
+        now = dt.now()
+        
+        for idx, event in schedule.iterrows():
+            event_date = event["EventDate"]
+            if hasattr(event_date, 'to_pydatetime'):
+                event_date = event_date.to_pydatetime()
+            if hasattr(event_date, 'replace') and event_date.tzinfo:
+                event_date = event_date.replace(tzinfo=None)
+            
+            if event_date > now:
+                return {
+                    "round": event["RoundNumber"],
+                    "race_name": event["EventName"],
+                    "country": event["Country"],
+                    "location": event["Location"],
+                    "date": event["EventDate"].strftime("%Y-%m-%d") if hasattr(event["EventDate"], 'strftime') else str(event["EventDate"]),
+                    "circuit": event["Location"],
+                }
+        return None
+    except:
+        return None
+
+
 if __name__ == "__main__":
     print("="*60)
     print("TESTING ENHANCED SPORTS BACKEND")

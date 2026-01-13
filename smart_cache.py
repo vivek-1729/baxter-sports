@@ -14,10 +14,30 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 # Cache durations (in seconds)
 CACHE_DURATIONS = {
+    # Existing sports
     'live_games': 30,           # 30 seconds - needs frequent updates (not using for now)
-    'upcoming_games': 86400,    # 24 hours - schedules published in advance, rarely change
+    'upcoming_games': 7200,     # 2 hours - refresh to catch completed games
     'recent_games': 172800,     # 48 hours - final scores NEVER change
     'standings': 21600,         # 6 hours - only change after games finish
+    
+    # NEW SPORTS
+    # Cricket
+    'cricket_upcoming': 86400,  # 24 hours - schedule doesn't change often
+    'cricket_recent': 3600,     # 1 hour - recent results update frequently
+    
+    # Tennis
+    'tennis_matches': 1800,     # 30 min - live matches update quickly
+    'tennis_rankings': 86400,   # 24 hours - rankings change weekly
+    'tennis_atp': 1800,         # 30 min - ATP matches
+    'tennis_wta': 1800,         # 30 min - WTA matches
+    
+    # Golf
+    'golf_tournament': 3600,    # 1 hour - active tournament
+    
+    # F1
+    'f1_schedule': 604800,      # 7 days - season schedule rarely changes
+    'f1_next_race': 86400,      # 24 hours - next race info
+    'f1_last_race': 86400,      # 24 hours - completed race results
 }
 
 

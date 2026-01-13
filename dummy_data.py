@@ -154,6 +154,57 @@ def get_dummy_fixtures() -> Dict[str, List[Dict]]:
                 'goals': {'home': None, 'away': None},
                 'sport': {'name': 'NHL', 'type': 'team'}
             }
+        ],
+        'cricket': [
+            {
+                'fixture': {
+                    'id': 5001,
+                    'date': (now + timedelta(days=3)).strftime('%Y-%m-%dT%H:%M:%S'),
+                    'status': {'short': 'NS'},
+                    'venue': {'name': 'Lord\'s Cricket Ground', 'city': 'London'}
+                },
+                'league': {'name': 'International Cricket', 'country': 'England'},
+                'teams': {
+                    'home': {'id': 40, 'name': 'India', 'logo': ''},
+                    'away': {'id': 41, 'name': 'England', 'logo': ''}
+                },
+                'goals': {'home': None, 'away': None},
+                'sport': {'name': 'Cricket', 'type': 'team'}
+            }
+        ],
+        'tennis': [
+            {
+                'fixture': {
+                    'id': 6001,
+                    'date': (now + timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%S'),
+                    'status': {'short': 'NS'},
+                    'venue': {'name': 'Arthur Ashe Stadium', 'city': 'New York'}
+                },
+                'league': {'name': 'ATP Tour', 'country': 'USA'},
+                'teams': {
+                    'home': {'id': 50, 'name': 'Carlos Alcaraz', 'logo': ''},
+                    'away': {'id': 51, 'name': 'Novak Djokovic', 'logo': ''}
+                },
+                'goals': {'home': None, 'away': None},
+                'sport': {'name': 'Tennis', 'type': 'player'}
+            }
+        ],
+        'golf': [
+            {
+                'fixture': {
+                    'id': 7001,
+                    'date': (now + timedelta(days=4)).strftime('%Y-%m-%dT%H:%M:%S'),
+                    'status': {'short': 'NS'},
+                    'venue': {'name': 'Augusta National', 'city': 'Augusta'}
+                },
+                'league': {'name': 'PGA Tour', 'country': 'USA'},
+                'teams': {
+                    'home': {'id': 60, 'name': 'Scottie Scheffler', 'logo': ''},
+                    'away': {'id': 61, 'name': 'Rory McIlroy', 'logo': ''}
+                },
+                'goals': {'home': None, 'away': None},
+                'sport': {'name': 'Golf', 'type': 'player'}
+            }
         ]
     }
 
@@ -242,6 +293,57 @@ def get_dummy_results() -> Dict[str, List[Dict]]:
                 },
                 'goals': {'home': 4, 'away': 2},
                 'sport': {'name': 'NHL', 'type': 'team'}
+            }
+        ],
+        'cricket': [
+            {
+                'fixture': {
+                    'id': 5002,
+                    'date': (now - timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%S'),
+                    'status': {'short': 'FT'},
+                    'venue': {'name': 'Melbourne Cricket Ground', 'city': 'Melbourne'}
+                },
+                'league': {'name': 'International Cricket', 'country': 'Australia'},
+                'teams': {
+                    'home': {'id': 42, 'name': 'Australia', 'logo': ''},
+                    'away': {'id': 43, 'name': 'New Zealand', 'logo': ''}
+                },
+                'goals': {'home': 285, 'away': 264},
+                'sport': {'name': 'Cricket', 'type': 'team'}
+            }
+        ],
+        'tennis': [
+            {
+                'fixture': {
+                    'id': 6002,
+                    'date': (now - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S'),
+                    'status': {'short': 'FT'},
+                    'venue': {'name': 'Centre Court', 'city': 'London'}
+                },
+                'league': {'name': 'ATP Tour', 'country': 'UK'},
+                'teams': {
+                    'home': {'id': 52, 'name': 'Rafael Nadal', 'logo': ''},
+                    'away': {'id': 53, 'name': 'Daniil Medvedev', 'logo': ''}
+                },
+                'goals': {'home': 3, 'away': 1},
+                'sport': {'name': 'Tennis', 'type': 'player'}
+            }
+        ],
+        'golf': [
+            {
+                'fixture': {
+                    'id': 7002,
+                    'date': (now - timedelta(days=3)).strftime('%Y-%m-%dT%H:%M:%S'),
+                    'status': {'short': 'FT'},
+                    'venue': {'name': 'Pebble Beach', 'city': 'Pebble Beach'}
+                },
+                'league': {'name': 'PGA Tour', 'country': 'USA'},
+                'teams': {
+                    'home': {'id': 62, 'name': 'Jon Rahm', 'logo': ''},
+                    'away': {'id': 63, 'name': 'Viktor Hovland', 'logo': ''}
+                },
+                'goals': {'home': -12, 'away': -10},
+                'sport': {'name': 'Golf', 'type': 'player'}
             }
         ]
     }
